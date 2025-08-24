@@ -5,6 +5,7 @@ import apiClient from '../data/interceptor';
 export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
+  INSPECTION_DETAILS: '/inspection/:vin',
   ROOT: '/',
 } as const;
 
@@ -58,6 +59,10 @@ export const navigationUtils = {
   
   goToDashboard: () => {
     window.location.href = ROUTES.DASHBOARD;
+  },
+  
+  goToInspectionDetails: (vin: string) => {
+    window.location.href = `/inspection/${vin}`;
   },
   
   logout: () => {

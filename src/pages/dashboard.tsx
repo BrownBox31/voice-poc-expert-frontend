@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/button';
 import InspectionsTable from '../components/InspectionsTable';
 import { navigationUtils } from '../services/routes';
@@ -7,6 +8,7 @@ import { ApiEndpoints } from '../services/data/apis';
 import type { VehicleInspection, InspectionListResponse } from '../interfaces/inspection';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [inspections, setInspections] = useState<VehicleInspection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,6 +60,10 @@ const Dashboard: React.FC = () => {
     navigationUtils.logout();
   };
 
+  const handleInspectionClick = (inspection: VehicleInspection) => {
+    navigate(`/inspection/${inspection.vin}`);
+  };
+
   
 
   if (isLoading) {
@@ -104,10 +110,7 @@ const Dashboard: React.FC = () => {
           <InspectionsTable 
             inspections={inspections} 
             isLoading={isLoading}
-            onInspectionClick={(inspection) => {
-              console.log('Clicked inspection:', inspection);
-              // TODO: Navigate to inspection details page
-            }}
+            onInspectionClick={handleInspectionClick}
           />
         </div>
       </main>
