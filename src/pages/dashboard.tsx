@@ -1,35 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../components/button';
+import InspectionsTable from '../components/InspectionsTable';
 import { navigationUtils } from '../services/routes';
-
-interface UserInfo {
-  id: string;
-  username: string;
-  email: string;
-}
+import apiService from '../services/data/api_service_class';
+import { ApiEndpoints } from '../services/data/apis';
+import type { VehicleInspection, InspectionListResponse } from '../interfaces/inspection';
 
 const Dashboard: React.FC = () => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [inspections, setInspections] = useState<VehicleInspection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchUserInfo();
+    fetchInspections();
   }, []);
 
-  const fetchUserInfo = async () => {
+  const fetchInspections = async () => {
     try {
-      // This would typically fetch user info from the API
-      // For now, we'll simulate it
-      setTimeout(() => {
-        setUserInfo({
-          id: '1',
-          username: 'demo_user',
-          email: 'demo@example.com'
-        });
-        setIsLoading(false);
-      }, 1000);
+      setIsLoading(true);
+      const response = await apiService.get<InspectionListResponse>(ApiEndpoints.ALL_INSPECTIONS);      
+      
+      // The API is returning the data directly, not wrapped in a data property
+      let fetchedInspections: VehicleInspection[] = [];
+      
+      
+
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        fetchedInspections = response;
+        console.log('Using response directly (array)');
+      } else if (response && typeof response === 'object') {
+        // Check if response has a data property
+        if ('data' in response && Array.isArray(response.data)) {
+          fetchedInspections = response.data;
+          console.log('Using response.data');
+        } else if ('data' in response && response.data && typeof response.data === 'object') {
+          // Check if data has an inspections property
+          const responseData = response.data as InspectionListResponse;
+          if ('inspections' in responseData && Array.isArray(responseData.inspections)) {
+            fetchedInspections = responseData.inspections;
+            console.log('Using response.data.inspections');
+          }
+        }
+      }
+      
+      setInspections(fetchedInspections);
+      console.log('Final inspections state:', fetchedInspections);
+      console.log('Inspections count:', fetchedInspections.length);
+      setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch user info:', error);
+      console.error('Failed to fetch inspections:', error);
+      setInspections([]);
       setIsLoading(false);
     }
   };
@@ -38,12 +58,14 @@ const Dashboard: React.FC = () => {
     navigationUtils.logout();
   };
 
+  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <p className="mt-4 text-gray-600">Loading inspections...</p>
         </div>
       </div>
     );
@@ -60,13 +82,10 @@ const Dashboard: React.FC = () => {
                 Vehicle Inspection Expert
               </h1>
               <p className="text-sm text-gray-600">
-                Welcome back, {userInfo?.username}
+                Dashboard Overview
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {userInfo?.email}
-              </span>
               <Button
                 onClick={handleLogout}
                 variant="secondary"
@@ -82,152 +101,14 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Dashboard Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">I</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Total Inspections
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        0
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">P</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Passed Inspections
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        0
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">F</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Failed Inspections
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        0
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">P</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Pending Reviews
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        0
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Quick Actions
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => {
-                    // TODO: Navigate to new inspection page
-                    alert('New Inspection feature will be implemented');
-                  }}
-                >
-                  Start New Inspection
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => {
-                    // TODO: Navigate to inspection history
-                    alert('View History feature will be implemented');
-                  }}
-                >
-                  View Inspection History
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => {
-                    // TODO: Navigate to reports
-                    alert('Generate Reports feature will be implemented');
-                  }}
-                >
-                  Generate Reports
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="mt-8 bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Recent Activity
-              </h3>
-              <div className="text-center py-8">
-                <p className="text-gray-500">No recent activity to display</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Start your first inspection to see activity here
-                </p>
-              </div>
-            </div>
-          </div>
+          <InspectionsTable 
+            inspections={inspections} 
+            isLoading={isLoading}
+            onInspectionClick={(inspection) => {
+              console.log('Clicked inspection:', inspection);
+              // TODO: Navigate to inspection details page
+            }}
+          />
         </div>
       </main>
     </div>
