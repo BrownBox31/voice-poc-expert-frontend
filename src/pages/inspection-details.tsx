@@ -5,47 +5,21 @@ import apiService from '../services/data/api_service_class';
 import { ApiEndpoints } from '../services/data/apis';
 import type { ApiResponse } from '../interfaces/api';
 
-// Define a flexible inspection details interface that can handle various API response structures
-interface InspectionDetailsResponse {
-  vin?: string;
-  status?: string;
-  overallStatus?: string;
-  inspectionDate?: string;
-  overallScore?: number;
-  inspectionCount?: number;
-  notes?: string;
-  vehicleInfo?: {
-    make?: string;
-    model?: string;
-    year?: number;
-    vin?: string;
-    licensePlate?: string;
-    mileage?: number;
-    color?: string;
+// Define interface based on actual API response structure
+interface InspectionIssue {
+  id: number;
+  status: string;
+  vin: string;
+  issueDescription: string;
+  createdByUserId: {
+    id: number;
+    firstName: string;
+    lastName: string;
   };
-  inspectionItems?: Array<{
-    id?: string;
-    category?: string;
-    itemName?: string;
-    status?: string;
-    severity?: string;
-    description?: string;
-    recommendations?: string;
-    images?: string[];
-  }>;
-  images?: Array<{
-    id?: string;
-    url?: string;
-    thumbnailUrl?: string;
-    caption?: string;
-    category?: string;
-    uploadedAt?: string;
-  }>;
-  createdAt?: string;
-  updatedAt?: string;
-  // Allow for any additional properties the API might return
-  [key: string]: unknown;
 }
+
+// API returns an array of inspection issues
+type InspectionDetailsResponse = InspectionIssue[];
 
 const InspectionDetails: React.FC = () => {
   const { vin } = useParams<{ vin: string }>();
@@ -83,21 +57,21 @@ const InspectionDetails: React.FC = () => {
           if (apiResponse.success && apiResponse.data) {
             inspectionData = apiResponse.data;
           } else {
-            inspectionData = response as unknown as InspectionDetailsResponse;
+            // Handle direct array response
+            if (Array.isArray(response)) {
+              inspectionData = response as InspectionDetailsResponse;
+            } else {
+              inspectionData = response as unknown as InspectionDetailsResponse;
+            }
           }
         }
       }
       
       console.log('Processed inspection data:', inspectionData);
       
-      // If we got minimal data, create a basic structure
-      if (inspectionData && Object.keys(inspectionData).length === 0) {
-        inspectionData = {
-          vin: vinNumber,
-          status: 'unknown',
-          overallStatus: 'unknown',
-          inspectionCount: 0
-        };
+      // Filter issues for the specific VIN if we have an array
+      if (Array.isArray(inspectionData)) {
+        inspectionData = inspectionData.filter(issue => issue.vin === vinNumber);
       }
       
       setInspection(inspectionData);
@@ -128,46 +102,14 @@ const InspectionDetails: React.FC = () => {
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
       case 'PENDING':
         return `${baseClasses} bg-gray-100 text-gray-800`;
+      case 'OPEN':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
   };
 
-  const getItemStatusBadge = (status: string) => {
-    const baseClasses = "px-2 py-1 text-xs font-medium rounded";
-    
-    switch (status.toLowerCase()) {
-      case 'pass':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'fail':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      case 'warning':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'not_applicable':
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-    }
-  };
 
-  const getSeverityBadge = (severity?: string): string | undefined => {
-    if (!severity) return undefined;
-    
-    const baseClasses = "px-2 py-1 text-xs font-medium rounded ml-2";
-    
-    switch (severity.toLowerCase()) {
-      case 'critical':
-        return `${baseClasses} bg-red-600 text-white`;
-      case 'high':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      case 'medium':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'low':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-    }
-  };
 
   if (isLoading) {
     return (
@@ -217,7 +159,7 @@ const InspectionDetails: React.FC = () => {
     );
   }
 
-  if (!inspection) {
+  if (!inspection || (Array.isArray(inspection) && inspection.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 pb-12">
         <header className="bg-white shadow-sm border-b border-gray-200">
@@ -260,9 +202,9 @@ const InspectionDetails: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
               <p className="text-sm text-gray-600">
-                VIN: {inspection.vehicleInfo?.vin || inspection.vin || vin}
-                {inspection.vehicleInfo?.year && inspection.vehicleInfo?.make && inspection.vehicleInfo?.model && 
-                  ` • ${inspection.vehicleInfo.year} ${inspection.vehicleInfo.make} ${inspection.vehicleInfo.model}`
+                VIN: {vin}
+                {Array.isArray(inspection) && inspection.length > 0 && 
+                  ` • ${inspection.length} issue${inspection.length !== 1 ? 's' : ''} found`
                 }
               </p>
             </div>
@@ -281,166 +223,70 @@ const InspectionDetails: React.FC = () => {
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Overview</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-500">Status</p>
-                  <div className="mt-1">
-                    <span className={getStatusBadge(inspection.status || inspection.overallStatus || 'unknown')}>
-                      {(inspection.status || inspection.overallStatus || 'unknown').replace('_', ' ').toUpperCase()}
-                    </span>
-                  </div>
+                  <p className="text-sm font-medium text-gray-500">VIN</p>
+                  <p className="mt-1 text-sm font-mono text-gray-900">{vin}</p>
                 </div>
                 
-                {inspection.inspectionDate && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">Inspection Date</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {new Date(inspection.inspectionDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-                
-                {inspection.overallScore !== undefined && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">Overall Score</p>
-                    <p className="mt-1 text-lg font-semibold text-gray-900">
-                      {inspection.overallScore}/100
-                    </p>
-                  </div>
-                )}
-                
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-500">Items Inspected</p>
+                  <p className="text-sm font-medium text-gray-500">Total Issues</p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
-                    {inspection.inspectionItems?.length || inspection.inspectionCount || 0}
+                    {Array.isArray(inspection) ? inspection.length : 0}
                   </p>
                 </div>
+                
+                {Array.isArray(inspection) && inspection.length > 0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-500">Status Distribution</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Array.from(new Set(inspection.map(issue => issue.status))).map(status => (
+                        <span key={status} className={getStatusBadge(status)} style={{fontSize: '10px', padding: '2px 6px'}}>
+                          {status}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {inspection.notes && (
-                <div className="mt-6">
-                  <p className="text-sm font-medium text-gray-500">Notes</p>
-                  <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">
-                    {inspection.notes}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Vehicle Information */}
-          {(inspection.vehicleInfo || inspection.vin) && (
-            <div className="bg-white shadow rounded-lg mb-6">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {inspection.vehicleInfo?.make && inspection.vehicleInfo?.model && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Make & Model</p>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {inspection.vehicleInfo.make} {inspection.vehicleInfo.model}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {inspection.vehicleInfo?.year && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Year</p>
-                      <p className="mt-1 text-sm text-gray-900">{inspection.vehicleInfo.year}</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">VIN</p>
-                    <p className="mt-1 text-sm text-gray-900 font-mono">
-                      {inspection.vehicleInfo?.vin || inspection.vin || vin}
-                    </p>
-                  </div>
-                  
-                  {inspection.vehicleInfo?.mileage && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Mileage</p>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {inspection.vehicleInfo.mileage.toLocaleString()} miles
-                      </p>
-                    </div>
-                  )}
-                  
-                  {inspection.vehicleInfo?.color && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Color</p>
-                      <p className="mt-1 text-sm text-gray-900">{inspection.vehicleInfo.color}</p>
-                    </div>
-                  )}
-                  
-                  {inspection.vehicleInfo?.licensePlate && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">License Plate</p>
-                      <p className="mt-1 text-sm text-gray-900 font-mono">
-                        {inspection.vehicleInfo.licensePlate}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Inspection Items */}
+          {/* Inspection Issues */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Items</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Issues</h3>
               
-              {inspection.inspectionItems && inspection.inspectionItems.length > 0 ? (
+              {Array.isArray(inspection) && inspection.length > 0 ? (
                 <div className="space-y-4">
-                  {inspection.inspectionItems.map((item, index) => (
-                    <div key={item.id || index} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{item.itemName || `Item ${index + 1}`}</h4>
-                          {item.category && (
-                            <p className="text-sm text-gray-500 capitalize">{item.category.replace('_', ' ')}</p>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center">
-                          {item.status && (
-                            <span className={getItemStatusBadge(item.status)}>
-                              {item.status.replace('_', ' ').toUpperCase()}
+                  {inspection.map((issue) => (
+                    <div key={issue.id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-gray-900">Issue #{issue.id}</h4>
+                            <span className={getStatusBadge(issue.status)}>
+                              {issue.status.replace('_', ' ').toUpperCase()}
                             </span>
-                          )}
-                          {item.severity && (
-                            <span className={getSeverityBadge(item.severity)}>
-                              {item.severity.toUpperCase()}
-                            </span>
-                          )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">VIN: {issue.vin}</p>
                         </div>
                       </div>
                       
-                      {item.description && (
-                        <p className="text-sm text-gray-700 mb-2">{item.description}</p>
-                      )}
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Issue Description</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                          {issue.issueDescription}
+                        </p>
+                      </div>
                       
-                      {item.recommendations && (
-                        <div className="bg-blue-50 p-3 rounded mt-2">
-                          <p className="text-sm font-medium text-blue-800">Recommendations:</p>
-                          <p className="text-sm text-blue-700">{item.recommendations}</p>
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="text-sm text-gray-500">
+                          <span className="font-medium">Created by:</span>{' '}
+                          {issue.createdByUserId.firstName} {issue.createdByUserId.lastName}
+                          <span className="text-gray-400 ml-1">(ID: {issue.createdByUserId.id})</span>
                         </div>
-                      )}
-                      
-                      {item.images && item.images.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Images:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {item.images.map((_, imgIndex) => (
-                              <div key={imgIndex} className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center">
-                                <span className="text-gray-400 text-xs">📷</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -449,9 +295,9 @@ const InspectionDetails: React.FC = () => {
                   <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                     <span className="text-gray-400 text-xl">📋</span>
                   </div>
-                  <p className="text-gray-500 text-lg mb-2">No inspection items available</p>
+                  <p className="text-gray-500 text-lg mb-2">No inspection issues found</p>
                   <p className="text-sm text-gray-400">
-                    Detailed inspection items are not available for this VIN.
+                    No issues were found for this VIN.
                   </p>
                 </div>
               )}
