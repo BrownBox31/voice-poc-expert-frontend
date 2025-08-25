@@ -6,6 +6,7 @@ import { ProtectedRoute, PublicRoute } from './index';
 // Import pages
 import Login from '../../pages/login';
 import Dashboard from '../../pages/dashboard';
+import InspectionList from '../../pages/inspection-list';
 import InspectionDetails from '../../pages/inspection-details';
 
 const AppRouter: React.FC = () => {
@@ -39,6 +40,15 @@ const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path={ROUTES.INSPECTION_LIST} 
+          element={
+            <ProtectedRoute>
+              <InspectionList />
             </ProtectedRoute>
           } 
         />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Button from '../components/button';
 import apiService from '../services/data/api_service_class';
 import { ApiEndpoints } from '../services/data/apis';
@@ -18,6 +18,7 @@ interface InspectionIssue {
   vin: string;
   issueDescription: string;
   createdAt: string; // ISO date string
+  inspectionId: string; // New field for inspection ID
   InspectionResolutionComments?: InspectionResolutionComment[]; // Array of resolution comments with S3 audio URLs
   createdByUserId: {
     id: number;
@@ -30,8 +31,9 @@ interface InspectionIssue {
 type InspectionDetailsResponse = InspectionIssue[];
 
 const InspectionDetails: React.FC = () => {
-  const { vin } = useParams<{ vin: string }>();
+  const { vin, inspectionId } = useParams<{ vin: string; inspectionId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [inspection, setInspection] = useState<InspectionDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +45,24 @@ const InspectionDetails: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
-    if (vin) {
-      fetchInspectionDetails(vin);
-    }
-  }, [vin]);
+    // Check if we have data from navigation state first
+    const navigationState = location.state as {
+      inspection?: any;
+      issues?: InspectionIssue[];
+      allIssues?: InspectionIssue[];
+    } | null;
 
-  const fetchInspectionDetails = async (vinNumber: string) => {
+    if (navigationState?.issues && navigationState.issues.length > 0) {
+      // Use data from navigation state
+      setInspection(navigationState.issues);
+      setIsLoading(false);
+    } else if (vin && inspectionId) {
+      // Fallback: fetch data if navigation state is missing
+      fetchInspectionDetails(vin, inspectionId);
+    }
+  }, [vin, inspectionId, location.state]);
+
+  const fetchInspectionDetails = async (vinNumber: string, inspectionIdParam: string) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -79,9 +93,12 @@ const InspectionDetails: React.FC = () => {
         }
       }
       
-      // Filter issues for the specific VIN if we have an array
+      // Filter issues for the specific VIN and inspectionId if we have an array
       if (Array.isArray(inspectionData)) {
-        inspectionData = inspectionData.filter(issue => issue.vin === vinNumber);
+        inspectionData = inspectionData.filter(issue => 
+          issue.vin === vinNumber && 
+          issue.inspectionId === inspectionIdParam
+        );
       }
       
       setInspection(inspectionData);
@@ -94,6 +111,10 @@ const InspectionDetails: React.FC = () => {
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
+  };
+
+  const handleBackToInspectionList = () => {
+    navigate(`/inspection/${vin}`);
   };
 
   const handleCheckboxChange = (issueId: number) => {
@@ -277,11 +298,16 @@ const InspectionDetails: React.FC = () => {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
-                <p className="text-sm text-gray-600">VIN: {vin}</p>
+                <p className="text-sm text-gray-600">VIN: {vin} • Inspection ID: {inspectionId}</p>
               </div>
-              <Button onClick={handleBackToDashboard} variant="secondary">
-                Back to Dashboard
-              </Button>
+              <div className="flex space-x-2">
+                <Button onClick={handleBackToInspectionList} variant="secondary">
+                  Back to Inspections
+                </Button>
+                <Button onClick={handleBackToDashboard} variant="secondary">
+                  Dashboard
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -295,7 +321,7 @@ const InspectionDetails: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Details</h3>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <Button onClick={() => vin && fetchInspectionDetails(vin)} variant="primary">
+                <Button onClick={() => vin && inspectionId && fetchInspectionDetails(vin, inspectionId)} variant="primary">
                   Try Again
                 </Button>
               </div>
@@ -314,11 +340,16 @@ const InspectionDetails: React.FC = () => {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
-                <p className="text-sm text-gray-600">VIN: {vin}</p>
+                <p className="text-sm text-gray-600">VIN: {vin} • Inspection ID: {inspectionId}</p>
               </div>
-              <Button onClick={handleBackToDashboard} variant="secondary">
-                Back to Dashboard
-              </Button>
+              <div className="flex space-x-2">
+                <Button onClick={handleBackToInspectionList} variant="secondary">
+                  Back to Inspections
+                </Button>
+                <Button onClick={handleBackToDashboard} variant="secondary">
+                  Dashboard
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -331,7 +362,7 @@ const InspectionDetails: React.FC = () => {
                   <span className="text-gray-400 text-xl">📋</span>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Inspection Found</h3>
-                <p className="text-gray-600">No inspection details found for VIN: {vin}</p>
+                <p className="text-gray-600">No inspection details found for VIN: {vin}, Inspection ID: {inspectionId}</p>
               </div>
             </div>
           </div>
@@ -346,10 +377,10 @@ const InspectionDetails: React.FC = () => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
-              <p className="text-sm text-gray-600">
-                VIN: {vin}
+                          <div>
+                <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
+                <p className="text-sm text-gray-600">
+                VIN: {vin} • Inspection ID: {inspectionId}
                 {Array.isArray(inspection) && inspection.length > 0 && (
                   <>
                     {` • ${filteredIssues.length} of ${inspection.length} issue${inspection.length !== 1 ? 's' : ''}`}
@@ -363,10 +394,15 @@ const InspectionDetails: React.FC = () => {
                   </span>
                 )}
               </p>
-            </div>
-            <Button onClick={handleBackToDashboard} variant="secondary">
-              Back to Dashboard
-            </Button>
+              </div>
+              <div className="flex space-x-2">
+                <Button onClick={handleBackToInspectionList} variant="secondary">
+                  Back to Inspections
+                </Button>
+                <Button onClick={handleBackToDashboard} variant="secondary">
+                  Dashboard
+                </Button>
+              </div>
           </div>
         </div>
       </header>
