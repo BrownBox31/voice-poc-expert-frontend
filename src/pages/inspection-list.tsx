@@ -104,21 +104,15 @@ const InspectionList: React.FC = () => {
       if (Array.isArray(issuesData)) {
         issuesData = issuesData.filter(issue => issue.vin === vinNumber);
         
-        // Debug: Log the first few issues to see the data structure
-        console.log('Raw issues data:', issuesData.slice(0, 3));
-        
         // Group issues by inspectionId to create inspection summaries
         const inspectionGroups = issuesData.reduce((groups: Record<string, InspectionIssue[]>, issue) => {
           const inspectionId = String(issue.inspectionId || 'unknown');
-          console.log(`Issue ${issue.id}: inspectionId = ${inspectionId}`);
           if (!groups[inspectionId]) {
             groups[inspectionId] = [];
           }
           groups[inspectionId].push(issue);
           return groups;
         }, {});
-        
-        console.log('Inspection groups:', inspectionGroups);
 
         // Convert groups to InspectionSummary array
         const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(([inspectionId, issues]) => {
@@ -169,8 +163,6 @@ const InspectionList: React.FC = () => {
   };
 
   const handleInspectionClick = (inspectionId: string) => {
-    console.log('Clicking on inspection:', inspectionId);
-    console.log('Available inspections:', inspections.map(i => i.inspectionId));
     setSelectedInspectionId(inspectionId);
     // Reset issue-related state when selecting a new inspection
     setSelectedIssues(new Set());
@@ -229,16 +221,6 @@ const InspectionList: React.FC = () => {
 
       await apiService.patch(url, payload);
       
-      // Update the issue status in local state
-      setIssuesData(prev => {
-        if (!prev) return prev;
-        return prev.map(issue => 
-          issue.id === issueId 
-            ? { ...issue, status: 'closed' }
-            : issue
-        );
-      });
-      
       // Mark as successfully updated
       setUpdateSuccess(prev => ({ ...prev, [issueId]: true }));
       
@@ -260,6 +242,11 @@ const InspectionList: React.FC = () => {
       setTimeout(() => {
         setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
       }, 3000);
+      
+      // Refetch the inspection data to update counts and statuses
+      if (vin) {
+        await fetchInspectionsByVin(vin);
+      }
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update issue status. Please try again.';
@@ -302,15 +289,9 @@ const InspectionList: React.FC = () => {
   const selectedInspectionIssues = React.useMemo(() => {
     if (!selectedInspectionId || !issuesData) return [];
     
-    console.log('Filtering issues for:', { selectedInspectionId, vin });
-    console.log('Available issues:', issuesData.map(issue => ({ id: issue.id, inspectionId: issue.inspectionId, vin: issue.vin })));
-    
-    const filtered = issuesData.filter(issue => 
+    return issuesData.filter(issue => 
       issue.vin === vin && String(issue.inspectionId) === selectedInspectionId
     );
-    
-    console.log('Filtered issues:', filtered);
-    return filtered;
   }, [selectedInspectionId, issuesData, vin]);
 
   // Filter issues based on status and search term
