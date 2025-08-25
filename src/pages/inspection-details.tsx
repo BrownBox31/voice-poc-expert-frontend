@@ -8,6 +8,8 @@ import type { ApiResponse } from '../interfaces/api';
 // Define interface based on actual API response structure
 interface InspectionResolutionComment {
   voiceClipUrl: string;
+  comment: string;
+  type: string;
 }
 
 interface InspectionIssue {
@@ -51,7 +53,7 @@ const InspectionDetails: React.FC = () => {
       // Construct the full URL by appending the VIN to the endpoint
       const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
       const response = await apiService.get<InspectionDetailsResponse>(url);
-      
+
       // Handle response based on API structure
       let inspectionData: InspectionDetailsResponse | null = null;
       
@@ -439,16 +441,45 @@ const InspectionDetails: React.FC = () => {
                             />
                           </td>
                           <td className="px-6 py-4">
-                            <textarea
-                              value={issueComments[issue.id] || ''}
-                              onChange={(e) => handleCommentChange(issue.id, e.target.value)}
-                              placeholder={isIssueResolved(issue.status) ? "Issue resolved" : "Add comments..."}
-                              disabled={isIssueResolved(issue.status)}
-                              className={`w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${
-                                isIssueResolved(issue.status) ? 'bg-gray-50 cursor-not-allowed opacity-50' : ''
-                              }`}
-                              rows={2}
-                            />
+                            {isIssueResolved(issue.status) ? (
+                              <div className="w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md bg-gray-50">
+
+                                {issue.InspectionResolutionComments && issue.InspectionResolutionComments.length > 0 ? (
+                                  <div>
+                                    {issue.InspectionResolutionComments
+                                      .filter(comment => comment.type === "RESOLUTION_COMMENT")
+                                      .map((comment, index) => (
+                                        <div key={index} className="mb-2 last:mb-0">
+                                          <div className="text-gray-700">{comment.comment}</div>
+                                          {comment.voiceClipUrl && (
+                                            <div className="mt-1">
+                                              <audio controls className="w-full h-6 text-xs">
+                                                <source src={comment.voiceClipUrl} type="audio/mpeg" />
+                                                <source src={comment.voiceClipUrl} type="audio/wav" />
+                                                <source src={comment.voiceClipUrl} type="audio/ogg" />
+                                                Your browser does not support the audio element.
+                                              </audio>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    {issue.InspectionResolutionComments.filter(comment => comment.type === "RESOLUTION_COMMENT").length === 0 && (
+                                      <div className="text-gray-500 italic">No resolution comments available</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="text-gray-500 italic">Issue resolved</div>
+                                )}
+                              </div>
+                            ) : (
+                              <textarea
+                                value={issueComments[issue.id] || ''}
+                                onChange={(e) => handleCommentChange(issue.id, e.target.value)}
+                                placeholder="Add comments..."
+                                className="w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                rows={2}
+                              />
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-2">

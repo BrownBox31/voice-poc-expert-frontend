@@ -19,6 +19,7 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const response: AxiosResponse<ApiResponse<T>> = await apiClient.get(url, config);
+      console.log(response.data);
       return response.data;
     } catch (error) {
       throw this.handleError(error, 'GET request failed');
