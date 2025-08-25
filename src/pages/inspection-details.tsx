@@ -34,6 +34,8 @@ const InspectionDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<number>>(new Set());
   const [issueComments, setIssueComments] = useState<Record<number, string>>({});
+  const [updatingIssues, setUpdatingIssues] = useState<Set<number>>(new Set());
+  const [updateSuccess, setUpdateSuccess] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (vin) {
@@ -108,6 +110,72 @@ const InspectionDetails: React.FC = () => {
     }));
   };
 
+  const updateIssueStatus = async (issueId: number) => {
+    const comment = issueComments[issueId];
+    const isSelected = selectedIssues.has(issueId);
+    
+    if (!isSelected || !comment?.trim()) {
+      alert('Please select the issue and add a comment before updating.');
+      return;
+    }
+
+    try {
+      setUpdatingIssues(prev => new Set([...prev, issueId]));
+      setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
+      
+      const url = `${ApiEndpoints.UPDATE_ISSUE_STATUS}${issueId}`;
+      const payload = {
+        status: "closed",
+        comments: comment.trim()
+      };
+
+      await apiService.patch(url, payload);
+      
+      // Update the issue status in local state to reflect the change
+      setInspection(prev => {
+        if (!prev || !Array.isArray(prev)) return prev;
+        
+        return prev.map(issue => 
+          issue.id === issueId 
+            ? { ...issue, status: 'closed' }
+            : issue
+        );
+      });
+      
+      // Mark as successfully updated
+      setUpdateSuccess(prev => ({ ...prev, [issueId]: true }));
+      
+      // Remove from selected issues after successful update
+      setSelectedIssues(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueId);
+        return newSet;
+      });
+      
+      // Clear the comment for this issue since it's now resolved
+      setIssueComments(prev => {
+        const updated = { ...prev };
+        delete updated[issueId];
+        return updated;
+      });
+      
+      // Show success feedback briefly
+      setTimeout(() => {
+        setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
+      }, 3000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update issue status. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setUpdatingIssues(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueId);
+        return newSet;
+      });
+    }
+  };
+
   // Extract S3 audio link from the first issue (assuming all have the same link)
   const audioLink = inspection && Array.isArray(inspection) && inspection.length > 0 
     && inspection[0].InspectionResolutionComments 
@@ -137,6 +205,12 @@ const InspectionDetails: React.FC = () => {
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
+  };
+
+  // Helper function to check if an issue is resolved
+  const isIssueResolved = (status: string): boolean => {
+    const resolvedStatuses = ['COMPLETED', 'APPROVED', 'CLOSED'];
+    return resolvedStatuses.includes(status.toUpperCase());
   };
 
 
@@ -328,6 +402,9 @@ const InspectionDetails: React.FC = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Comments
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -353,19 +430,60 @@ const InspectionDetails: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
-                              checked={selectedIssues.has(issue.id)}
+                              checked={isIssueResolved(issue.status) || selectedIssues.has(issue.id)}
                               onChange={() => handleCheckboxChange(issue.id)}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              disabled={isIssueResolved(issue.status)}
+                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                                isIssueResolved(issue.status) ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                             />
                           </td>
                           <td className="px-6 py-4">
                             <textarea
                               value={issueComments[issue.id] || ''}
                               onChange={(e) => handleCommentChange(issue.id, e.target.value)}
-                              placeholder="Add comments..."
-                              className="w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                              placeholder={isIssueResolved(issue.status) ? "Issue resolved" : "Add comments..."}
+                              disabled={isIssueResolved(issue.status)}
+                              className={`w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                                isIssueResolved(issue.status) ? 'bg-gray-50 cursor-not-allowed opacity-50' : ''
+                              }`}
                               rows={2}
                             />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              {!isIssueResolved(issue.status) ? (
+                                <Button
+                                  onClick={() => updateIssueStatus(issue.id)}
+                                  disabled={!selectedIssues.has(issue.id) || !issueComments[issue.id]?.trim() || updatingIssues.has(issue.id)}
+                                  variant={updateSuccess[issue.id] ? "secondary" : "primary"}
+                                  size="small"
+                                  className={`min-w-[80px] ${
+                                    updateSuccess[issue.id] 
+                                      ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
+                                      : ''
+                                  }`}
+                                >
+                                  {updatingIssues.has(issue.id) ? (
+                                    <div className="flex items-center space-x-1">
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                      <span>...</span>
+                                    </div>
+                                  ) : updateSuccess[issue.id] ? (
+                                    <div className="flex items-center space-x-1">
+                                      <span>✓</span>
+                                      <span>Updated</span>
+                                    </div>
+                                  ) : (
+                                    'Update'
+                                  )}
+                                </Button>
+                              ) : (
+                                <span className="text-sm text-green-600 font-medium">
+                                  ✓ Resolved
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -392,19 +510,11 @@ const InspectionDetails: React.FC = () => {
                   onClick={() => {
                     setSelectedIssues(new Set());
                     setIssueComments({});
+                    setUpdateSuccess({});
                   }}
                   variant="secondary"
                 >
-                  Clear Selection
-                </Button>
-                <Button
-                  onClick={() => {
-                    // Handle submit logic here
-                    alert(`Submitted ${selectedIssues.size} selected issues with comments`);
-                  }}
-                  variant="primary"
-                >
-                  Submit Selected Issues ({selectedIssues.size})
+                  Clear All Selections
                 </Button>
               </div>
             )}
