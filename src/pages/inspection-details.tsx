@@ -6,11 +6,16 @@ import { ApiEndpoints } from '../services/data/apis';
 import type { ApiResponse } from '../interfaces/api';
 
 // Define interface based on actual API response structure
+interface InspectionResolutionComment {
+  voiceClipUrl: string;
+}
+
 interface InspectionIssue {
   id: number;
   status: string;
   vin: string;
   issueDescription: string;
+  InspectionResolutionComments?: InspectionResolutionComment[]; // Array of resolution comments with S3 audio URLs
   createdByUserId: {
     id: number;
     firstName: string;
@@ -27,6 +32,8 @@ const InspectionDetails: React.FC = () => {
   const [inspection, setInspection] = useState<InspectionDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIssues, setSelectedIssues] = useState<Set<number>>(new Set());
+  const [issueComments, setIssueComments] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (vin) {
@@ -86,6 +93,37 @@ const InspectionDetails: React.FC = () => {
   const handleBackToDashboard = () => {
     navigate('/dashboard');
   };
+
+  const handleCheckboxChange = (issueId: number) => {
+    setSelectedIssues(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(issueId)) {
+        newSet.delete(issueId);
+      } else {
+        newSet.add(issueId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCommentChange = (issueId: number, comment: string) => {
+    setIssueComments(prev => ({
+      ...prev,
+      [issueId]: comment
+    }));
+  };
+
+  // Extract S3 audio link from the first issue (assuming all have the same link)
+  const audioLink = inspection && Array.isArray(inspection) && inspection.length > 0 
+    && inspection[0].InspectionResolutionComments 
+    && inspection[0].InspectionResolutionComments.length > 0
+    ? inspection[0].InspectionResolutionComments[0].voiceClipUrl 
+    : null;
+  
+  // Optional: Debug logging (can be removed in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Audio link extracted:', audioLink);
+  }
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "px-3 py-1 text-sm font-medium rounded-full";
@@ -206,6 +244,11 @@ const InspectionDetails: React.FC = () => {
                 {Array.isArray(inspection) && inspection.length > 0 && 
                   ` • ${inspection.length} issue${inspection.length !== 1 ? 's' : ''} found`
                 }
+                {selectedIssues.size > 0 && (
+                  <span className="ml-2 text-blue-600 font-medium">
+                    • {selectedIssues.size} selected
+                  </span>
+                )}
               </p>
             </div>
             <Button onClick={handleBackToDashboard} variant="secondary">
@@ -223,7 +266,7 @@ const InspectionDetails: React.FC = () => {
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Overview</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm font-medium text-gray-500">VIN</p>
                   <p className="mt-1 text-sm font-mono text-gray-900">{vin}</p>
@@ -248,47 +291,94 @@ const InspectionDetails: React.FC = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Audio Player - Show only if we have audioLink */}
+                {audioLink && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-500 mb-2">Resolution Audio</p>
+                    <audio controls className="w-full h-8">
+                      <source src={audioLink} type="audio/mpeg" />
+                      <source src={audioLink} type="audio/wav" />
+                      <source src={audioLink} type="audio/ogg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Inspection Issues */}
+          {/* Inspection Issues Table */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Issues</h3>
               
               {Array.isArray(inspection) && inspection.length > 0 ? (
-                <div className="space-y-4">
-                  {inspection.map((issue) => (
-                    <div key={issue.id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-gray-900">Issue #{issue.id}</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Issue ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Description
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created By
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Select
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Comments
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {inspection.map((issue) => (
+                        <tr key={issue.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #{issue.id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className={getStatusBadge(issue.status)}>
                               {issue.status.replace('_', ' ').toUpperCase()}
                             </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">VIN: {issue.vin}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-gray-500 mb-1">Issue Description</p>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
-                          {issue.issueDescription}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <div className="text-sm text-gray-500">
-                          <span className="font-medium">Created by:</span>{' '}
-                          {issue.createdByUserId.firstName} {issue.createdByUserId.lastName}
-                          <span className="text-gray-400 ml-1">(ID: {issue.createdByUserId.id})</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
+                            <div className="truncate" title={issue.issueDescription}>
+                              {issue.issueDescription}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {issue.createdByUserId.firstName} {issue.createdByUserId.lastName}
+                            <div className="text-xs text-gray-400">ID: {issue.createdByUserId.id}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedIssues.has(issue.id)}
+                              onChange={() => handleCheckboxChange(issue.id)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <textarea
+                              value={issueComments[issue.id] || ''}
+                              onChange={(e) => handleCommentChange(issue.id, e.target.value)}
+                              placeholder="Add comments..."
+                              className="w-full min-w-[200px] p-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                              rows={2}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -302,6 +392,32 @@ const InspectionDetails: React.FC = () => {
                 </div>
               )}
             </div>
+            
+            {/* Action Buttons */}
+            {Array.isArray(inspection) && inspection.length > 0 && selectedIssues.size > 0 && (
+              <div className="mt-6 flex justify-end space-x-3">
+                <Button
+                  onClick={() => {
+                    setSelectedIssues(new Set());
+                    setIssueComments({});
+                  }}
+                  variant="secondary"
+                >
+                  Clear Selection
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Handle submit logic here
+                    console.log('Selected issues:', Array.from(selectedIssues));
+                    console.log('Issue comments:', issueComments);
+                    alert(`Submitted ${selectedIssues.size} selected issues with comments`);
+                  }}
+                  variant="primary"
+                >
+                  Submit Selected Issues ({selectedIssues.size})
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </main>
