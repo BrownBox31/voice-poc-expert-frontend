@@ -4,7 +4,7 @@ import InputField from '../components/input_field';
 import Button from '../components/button';
 
 import apiClient from '../services/data/interceptor';
-import { ROUTES } from '../services/routes';
+import { ROUTES } from '../services/routes/constants';
 
 interface LoginFormData {
   email: string;

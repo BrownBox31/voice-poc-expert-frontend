@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ROUTES, ProtectedRoute, PublicRoute } from './index';
+import { ROUTES } from './constants';
+import { ProtectedRoute, PublicRoute } from './index';
 
 // Import pages
 import Login from '../../pages/login';

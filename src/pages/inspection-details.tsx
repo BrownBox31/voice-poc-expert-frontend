@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../components/button';
 import apiService from '../services/data/api_service_class';
 import { ApiEndpoints } from '../services/data/apis';
+import type { ApiResponse } from '../interfaces/api';
 
 // Define a flexible inspection details interface that can handle various API response structures
 interface InspectionDetailsResponse {
@@ -77,7 +78,13 @@ const InspectionDetails: React.FC = () => {
         if ('data' in response && response.data) {
           inspectionData = response.data as InspectionDetailsResponse;
         } else {
-          inspectionData = response as InspectionDetailsResponse;
+          // Check if response has ApiResponse structure
+          const apiResponse = response as ApiResponse<InspectionDetailsResponse>;
+          if (apiResponse.success && apiResponse.data) {
+            inspectionData = apiResponse.data;
+          } else {
+            inspectionData = response as unknown as InspectionDetailsResponse;
+          }
         }
       }
       
@@ -143,8 +150,8 @@ const InspectionDetails: React.FC = () => {
     }
   };
 
-  const getSeverityBadge = (severity?: string) => {
-    if (!severity) return null;
+  const getSeverityBadge = (severity?: string): string | undefined => {
+    if (!severity) return undefined;
     
     const baseClasses = "px-2 py-1 text-xs font-medium rounded ml-2";
     
@@ -426,7 +433,7 @@ const InspectionDetails: React.FC = () => {
                         <div className="mt-3">
                           <p className="text-sm font-medium text-gray-700 mb-2">Images:</p>
                           <div className="flex flex-wrap gap-2">
-                            {item.images.map((imageUrl, imgIndex) => (
+                            {item.images.map((_, imgIndex) => (
                               <div key={imgIndex} className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">📷</span>
                               </div>

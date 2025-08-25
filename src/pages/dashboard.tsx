@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/button';
 import InspectionsTable from '../components/InspectionsTable';
-import { navigationUtils } from '../services/routes';
+import { navigationUtils } from '../services/routes/constants';
 import apiService from '../services/data/api_service_class';
 import { ApiEndpoints } from '../services/data/apis';
 import type { VehicleInspection, InspectionListResponse } from '../interfaces/inspection';
