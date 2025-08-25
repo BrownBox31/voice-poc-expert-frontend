@@ -69,8 +69,6 @@ const Login: React.FC = () => {
       // Navigate to dashboard
       navigate(ROUTES.DASHBOARD);
     } catch (error: unknown) {
-      console.error('Login failed:', error);
-      
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status?: number } };
         if (axiosError.response?.status === 401) {

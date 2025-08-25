@@ -50,8 +50,6 @@ const InspectionDetails: React.FC = () => {
       const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
       const response = await apiService.get<InspectionDetailsResponse>(url);
       
-      console.log('Raw API response:', response);
-      
       // Handle response based on API structure
       let inspectionData: InspectionDetailsResponse | null = null;
       
@@ -74,8 +72,6 @@ const InspectionDetails: React.FC = () => {
         }
       }
       
-      console.log('Processed inspection data:', inspectionData);
-      
       // Filter issues for the specific VIN if we have an array
       if (Array.isArray(inspectionData)) {
         inspectionData = inspectionData.filter(issue => issue.vin === vinNumber);
@@ -83,8 +79,7 @@ const InspectionDetails: React.FC = () => {
       
       setInspection(inspectionData);
     } catch (error) {
-      console.error('Failed to fetch inspection details:', error);
-      setError('Failed to load inspection details. Please try again.');
+      setError(error as string);
     } finally {
       setIsLoading(false);
     }
@@ -120,10 +115,7 @@ const InspectionDetails: React.FC = () => {
     ? inspection[0].InspectionResolutionComments[0].voiceClipUrl 
     : null;
   
-  // Optional: Debug logging (can be removed in production)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Audio link extracted:', audioLink);
-  }
+
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "px-3 py-1 text-sm font-medium rounded-full";
@@ -408,8 +400,6 @@ const InspectionDetails: React.FC = () => {
                 <Button
                   onClick={() => {
                     // Handle submit logic here
-                    console.log('Selected issues:', Array.from(selectedIssues));
-                    console.log('Issue comments:', issueComments);
                     alert(`Submitted ${selectedIssues.size} selected issues with comments`);
                   }}
                   variant="primary"

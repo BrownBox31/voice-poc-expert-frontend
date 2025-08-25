@@ -29,28 +29,22 @@ const Dashboard: React.FC = () => {
       if (Array.isArray(response)) {
         // Response is directly an array
         fetchedInspections = response;
-        console.log('Using response directly (array)');
       } else if (response && typeof response === 'object') {
         // Check if response has a data property
         if ('data' in response && Array.isArray(response.data)) {
           fetchedInspections = response.data;
-          console.log('Using response.data');
         } else if ('data' in response && response.data && typeof response.data === 'object') {
           // Check if data has an inspections property
           const responseData = response.data as InspectionListResponse;
           if ('inspections' in responseData && Array.isArray(responseData.inspections)) {
             fetchedInspections = responseData.inspections;
-            console.log('Using response.data.inspections');
           }
         }
       }
       
       setInspections(fetchedInspections);
-      console.log('Final inspections state:', fetchedInspections);
-      console.log('Inspections count:', fetchedInspections.length);
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch inspections:', error);
       setInspections([]);
       setIsLoading(false);
     }
