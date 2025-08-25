@@ -17,6 +17,7 @@ interface InspectionIssue {
   status: string;
   vin: string;
   issueDescription: string;
+  createdAt: string; // ISO date string
   InspectionResolutionComments?: InspectionResolutionComment[]; // Array of resolution comments with S3 audio URLs
   createdByUserId: {
     id: number;
@@ -399,6 +400,9 @@ const InspectionDetails: React.FC = () => {
                           Created By
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created At
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Select
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -428,6 +432,15 @@ const InspectionDetails: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {issue.createdByUserId.firstName} {issue.createdByUserId.lastName}
                             <div className="text-xs text-gray-400">ID: {issue.createdByUserId.id}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {issue.createdAt ? new Date(issue.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
