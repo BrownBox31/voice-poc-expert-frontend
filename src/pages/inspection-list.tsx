@@ -468,6 +468,45 @@ const InspectionList: React.FC = () => {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            {/* Inspection Overview */}
+            <div className="bg-white shadow rounded-lg mb-6">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Overview</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedInspection && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm font-medium text-gray-500">Status</p>
+                      <span className={getStatusBadge(selectedInspection.status)}>
+                        {selectedInspection.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Audio Player - Show if we have resolution audio */}
+                  {(() => {
+                    const audioLink = selectedInspectionIssues.length > 0 
+                      && selectedInspectionIssues[0].InspectionResolutionComments 
+                      && selectedInspectionIssues[0].InspectionResolutionComments.length > 0
+                      ? selectedInspectionIssues[0].InspectionResolutionComments[0].voiceClipUrl 
+                      : null;
+                    
+                    return audioLink ? (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-sm font-medium text-gray-500 mb-2">Listen to Issue Recording</p>
+                        <audio controls className="w-full h-8">
+                          <source src={audioLink} type="audio/mpeg" />
+                          <source src={audioLink} type="audio/wav" />
+                          <source src={audioLink} type="audio/ogg" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+            </div>
+
             {/* Filters */}
             {selectedInspectionIssues.length > 0 && (
               <div className="bg-white shadow rounded-lg mb-6">
@@ -539,49 +578,6 @@ const InspectionList: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Inspection Overview */}
-            <div className="bg-white shadow rounded-lg mb-6">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Overview</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">VIN</p>
-                    <p className="mt-1 text-sm font-mono text-gray-900">{vin}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">Inspection ID</p>
-                    <p className="mt-1 text-sm font-mono text-gray-900">{selectedInspectionId}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">
-                      {statusFilter === 'all' ? 'Total Issues' : 
-                       statusFilter === 'open' ? 'Open Issues' : 'Closed Issues'}
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-gray-900">
-                      {filteredIssues.length}
-                      {statusFilter === 'all' && selectedInspectionIssues.length > 0 && (
-                        <span className="text-sm font-normal text-gray-500 ml-1">
-                          of {selectedInspectionIssues.length}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  
-                  {selectedInspection && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-500">Status</p>
-                      <span className={getStatusBadge(selectedInspection.status)}>
-                        {selectedInspection.status.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
 
             {/* Inspection Issues */}
             <div className="bg-white shadow rounded-lg">
