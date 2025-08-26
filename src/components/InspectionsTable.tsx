@@ -160,9 +160,6 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
                   Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Checklist Items Inspected
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -182,11 +179,6 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span className={getStatusBadge(inspection.overallStatus)}>
                       {inspection.overallStatus.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className="text-sm font-medium text-gray-900">
-                      {inspection.inspectionCount} items
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
