@@ -1,45 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../components/button';
-import apiService from '../services/data/api_service_class';
-import { ApiEndpoints } from '../services/data/apis';
-import type { ApiResponse } from '../interfaces/api';
+import InspectionCard from '../features/inspections/components/InspectionCard';
+import {
+  fetchInspectionsByVin,
+  updateIssueStatus,
+  filterInspections,
+  getSelectedInspectionIssues,
+  filterIssues,
+  getStatusCounts,
+  getStatusBadge,
+  isIssueResolved,
+  type InspectionSummary,
+  type InspectionIssue
+} from '../features/inspections/services/inspection_services';
+import Loader from '../components/loader';
 
-// Define interface for inspection summary (grouped by inspectionId)
-interface InspectionSummary {
-  inspectionId: string;
-  vin: string;
-  issueCount: number;
-  openIssuesCount: number;
-  closedIssuesCount: number;
-  createdAt: string;
-  lastUpdated: string;
-  status: string; // Overall status of the inspection
-}
 
-// Define interface for the raw inspection issue (same as in inspection-details)
-interface InspectionResolutionComment {
-  voiceClipUrl: string;
-  comment: string;
-  type: string;
-}
-
-interface InspectionIssue {
-  id: number;
-  status: string;
-  vin: string;
-  issueDescription: string;
-  createdAt: string;
-  inspectionId: number; // This is actually a number in the API
-  InspectionResolutionComments?: InspectionResolutionComment[];
-  createdByUserId: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-}
-
-type InspectionIssuesResponse = InspectionIssue[];
 
 const InspectionList: React.FC = () => {
   const { vin } = useParams<{ vin: string }>();
@@ -57,99 +34,20 @@ const InspectionList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [issueSearchTerm, setIssueSearchTerm] = useState<string>('');
 
-  // Helper function to check if an issue is resolved
-  const isIssueResolved = (status: string): boolean => {
-    const resolvedStatuses = ['COMPLETED', 'APPROVED', 'CLOSED'];
-    return resolvedStatuses.includes(status.toUpperCase());
-  };
-
   useEffect(() => {
     if (vin) {
-      fetchInspectionsByVin(vin);
+      handleFetchInspections(vin);
     }
   }, [vin]);
 
-  const fetchInspectionsByVin = async (vinNumber: string) => {
+  const handleFetchInspections = async (vinNumber: string) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Use the inspection details endpoint to get all issues for this VIN
-      const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
-      const response = await apiService.get<InspectionIssuesResponse>(url);
-
-      // Handle response based on API structure
-      let issuesData: InspectionIssuesResponse | null = null;
-      
-      if (response && typeof response === 'object') {
-        if ('data' in response && response.data) {
-          issuesData = response.data as InspectionIssuesResponse;
-        } else {
-          // Check if response has ApiResponse structure
-          const apiResponse = response as ApiResponse<InspectionIssuesResponse>;
-          if (apiResponse.success && apiResponse.data) {
-            issuesData = apiResponse.data;
-          } else {
-            // Handle direct array response
-            if (Array.isArray(response)) {
-              issuesData = response as InspectionIssuesResponse;
-            } else {
-              issuesData = response as unknown as InspectionIssuesResponse;
-            }
-          }
-        }
-      }
-      
-      // Filter issues for the specific VIN
-      if (Array.isArray(issuesData)) {
-        issuesData = issuesData.filter(issue => issue.vin === vinNumber);
-        
-        // Group issues by inspectionId to create inspection summaries
-        const inspectionGroups = issuesData.reduce((groups: Record<string, InspectionIssue[]>, issue) => {
-          const inspectionId = String(issue.inspectionId || 'unknown');
-          if (!groups[inspectionId]) {
-            groups[inspectionId] = [];
-          }
-          groups[inspectionId].push(issue);
-          return groups;
-        }, {});
-
-        // Convert groups to InspectionSummary array
-        const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(([inspectionId, issues]) => {
-          const openIssues = issues.filter(issue => !isIssueResolved(issue.status));
-          const closedIssues = issues.filter(issue => isIssueResolved(issue.status));
-          
-          // Sort issues by creation date to get the earliest and latest
-          const sortedIssues = [...issues].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-          const earliestIssue = sortedIssues[0];
-          const latestIssue = sortedIssues[sortedIssues.length - 1];
-          
-          // Determine overall inspection status
-          let status = 'completed';
-          if (openIssues.length > 0) {
-            status = openIssues.length === issues.length ? 'pending' : 'in_progress';
-          }
-
-          return {
-            inspectionId,
-            vin: vinNumber,
-            issueCount: issues.length,
-            openIssuesCount: openIssues.length,
-            closedIssuesCount: closedIssues.length,
-            createdAt: earliestIssue.createdAt,
-            lastUpdated: latestIssue.createdAt,
-            status
-          };
-        });
-
-        // Sort inspections by creation date (newest first)
-        inspectionSummaries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
-        setInspections(inspectionSummaries);
-        setIssuesData(issuesData); // Store the raw issues data for navigation
-      } else {
-        setInspections([]);
-      }
+      const { inspections, issuesData } = await fetchInspectionsByVin(vinNumber);
+      setInspections(inspections);
+      setIssuesData(issuesData);
     } catch (error) {
       setError(error as string);
       setInspections([]);
@@ -200,7 +98,7 @@ const InspectionList: React.FC = () => {
     }));
   };
 
-  const updateIssueStatus = async (issueId: number) => {
+  const handleUpdateIssueStatus = async (issueId: number) => {
     const comment = issueComments[issueId];
     const isSelected = selectedIssues.has(issueId);
     
@@ -213,13 +111,7 @@ const InspectionList: React.FC = () => {
       setUpdatingIssues(prev => new Set([...prev, issueId]));
       setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
       
-      const url = `${ApiEndpoints.UPDATE_ISSUE_STATUS}${issueId}`;
-      const payload = {
-        status: "closed",
-        comments: comment.trim()
-      };
-
-      await apiService.patch(url, payload);
+      await updateIssueStatus(issueId, comment.trim());
       
       // Mark as successfully updated
       setUpdateSuccess(prev => ({ ...prev, [issueId]: true }));
@@ -245,7 +137,7 @@ const InspectionList: React.FC = () => {
       
       // Refetch the inspection data to update counts and statuses
       if (vin) {
-        await fetchInspectionsByVin(vin);
+        await handleFetchInspections(vin);
       }
       
     } catch (error) {
@@ -260,88 +152,27 @@ const InspectionList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const baseClasses = "px-3 py-1 text-sm font-medium rounded-full";
-    
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'in_progress':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'pending':
-        return `${baseClasses} bg-orange-100 text-orange-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-    }
-  };
-
   // Filter inspections based on search term
   const filteredInspections = React.useMemo(() => {
-    if (!searchTerm.trim()) return inspections;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return inspections.filter(inspection => 
-      inspection.inspectionId.toLowerCase().includes(searchLower)
-    );
+    return filterInspections(inspections, searchTerm);
   }, [inspections, searchTerm]);
 
   // Get issues for selected inspection
   const selectedInspectionIssues = React.useMemo(() => {
-    if (!selectedInspectionId || !issuesData) return [];
-    
-    return issuesData.filter(issue => 
-      issue.vin === vin && String(issue.inspectionId) === selectedInspectionId
-    );
-  }, [selectedInspectionId, issuesData, vin]);
+    return getSelectedInspectionIssues(issuesData, selectedInspectionId);
+  }, [selectedInspectionId, issuesData]);
 
   // Filter issues based on status and search term
   const filteredIssues = React.useMemo(() => {
-    if (!selectedInspectionIssues.length) return [];
-    
-    let filtered = selectedInspectionIssues;
-    
-    // Filter by status
-    if (statusFilter === 'open') {
-      filtered = filtered.filter(issue => !isIssueResolved(issue.status));
-    } else if (statusFilter === 'closed') {
-      filtered = filtered.filter(issue => isIssueResolved(issue.status));
-    }
-    
-    // Filter by search term
-    if (issueSearchTerm.trim()) {
-      const searchLower = issueSearchTerm.toLowerCase();
-      filtered = filtered.filter(issue => 
-        issue.issueDescription.toLowerCase().includes(searchLower) ||
-        issue.id.toString().includes(searchLower)
-      );
-    }
-    
-    return filtered;
+    return filterIssues(selectedInspectionIssues, statusFilter, issueSearchTerm);
   }, [selectedInspectionIssues, statusFilter, issueSearchTerm]);
 
   // Get counts for different statuses
   const statusCounts = React.useMemo(() => {
-    if (!selectedInspectionIssues.length) {
-      return { total: 0, open: 0, closed: 0 };
-    }
-    
-    const total = selectedInspectionIssues.length;
-    const closed = selectedInspectionIssues.filter(issue => isIssueResolved(issue.status)).length;
-    const open = total - closed;
-    
-    return { total, open, closed };
+    return getStatusCounts(selectedInspectionIssues);
   }, [selectedInspectionIssues]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading inspections...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <Loader />;
 
   if (error) {
     return (
@@ -369,7 +200,7 @@ const InspectionList: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Inspections</h3>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <Button onClick={() => vin && fetchInspectionsByVin(vin)} variant="primary">
+                <Button onClick={() => vin && handleFetchInspections(vin)} variant="primary">
                   Try Again
                 </Button>
               </div>
@@ -486,9 +317,9 @@ const InspectionList: React.FC = () => {
                   {/* Audio Player - Show if we have resolution audio */}
                   {(() => {
                     const audioLink = selectedInspectionIssues.length > 0 
-                      && selectedInspectionIssues[0].InspectionResolutionComments 
-                      && selectedInspectionIssues[0].InspectionResolutionComments.length > 0
-                      ? selectedInspectionIssues[0].InspectionResolutionComments[0].voiceClipUrl 
+                      && selectedInspectionIssues[0].inspectionResolutionComments 
+                      && selectedInspectionIssues[0].inspectionResolutionComments.length > 0
+                      ? selectedInspectionIssues[0].inspectionResolutionComments[0].voiceClipUrl 
                       : null;
                     
                     return audioLink ? (
@@ -586,45 +417,45 @@ const InspectionList: React.FC = () => {
                 
                 {filteredIssues.length > 0 ? (
                   <div className="space-y-4">
-                    {filteredIssues.map((issue) => (
-                      <div key={issue.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                      {filteredIssues.map((issue) => (
+                    <div key={issue.issueId} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                         {/* Header Row */}
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
-                          <div className="flex items-center space-x-3 mb-2 sm:mb-0">
-                            <span className="text-sm font-medium text-gray-900">#{issue.id}</span>
-                            <span className={getStatusBadge(issue.status)}>
-                              {issue.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            <input
-                              type="checkbox"
-                              checked={isIssueResolved(issue.status) || selectedIssues.has(issue.id)}
-                              onChange={() => handleCheckboxChange(issue.id)}
-                              disabled={isIssueResolved(issue.status)}
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
-                                isIssueResolved(issue.status) ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
-                            />
-                          </div>
+                                                  <div className="flex items-center space-x-3 mb-2 sm:mb-0">
+                          <span className="text-sm font-medium text-gray-900">#{issue.issueId}</span>
+                          <span className={getStatusBadge(issue.status)}>
+                            {issue.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={isIssueResolved(issue.status) || selectedIssues.has(issue.issueId)}
+                            onChange={() => handleCheckboxChange(issue.issueId)}
+                            disabled={isIssueResolved(issue.status)}
+                            className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                              isIssueResolved(issue.status) ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          />
+                        </div>
                           
                           <div className="flex items-center space-x-2">
                             {!isIssueResolved(issue.status) ? (
-                              <Button
-                                onClick={() => updateIssueStatus(issue.id)}
-                                disabled={!selectedIssues.has(issue.id) || !issueComments[issue.id]?.trim() || updatingIssues.has(issue.id)}
-                                variant={updateSuccess[issue.id] ? "secondary" : "primary"}
-                                size="small"
-                                className={`min-w-[80px] ${
-                                  updateSuccess[issue.id] 
-                                    ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
-                                    : ''
-                                }`}
-                              >
-                                {updatingIssues.has(issue.id) ? (
+                                                          <Button
+                              onClick={() => handleUpdateIssueStatus(issue.issueId)}
+                              disabled={!selectedIssues.has(issue.issueId) || !issueComments[issue.issueId]?.trim() || updatingIssues.has(issue.issueId)}
+                              variant={updateSuccess[issue.issueId] ? "secondary" : "primary"}
+                              size="small"
+                              className={`min-w-[80px] ${
+                                updateSuccess[issue.issueId] 
+                                  ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
+                                  : ''
+                              }`}
+                            >
+                                {updatingIssues.has(issue.issueId) ? (
                                   <div className="flex items-center space-x-1">
                                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
                                     <span>...</span>
                                   </div>
-                                ) : updateSuccess[issue.id] ? (
+                                ) : updateSuccess[issue.issueId] ? (
                                   <div className="flex items-center space-x-1">
                                     <span>✓</span>
                                     <span>Updated</span>
@@ -652,8 +483,8 @@ const InspectionList: React.FC = () => {
                           <div>
                             <span className="font-medium text-gray-700">Created by:</span>
                             <div className="text-gray-600">
-                              {issue.createdByUserId.firstName} {issue.createdByUserId.lastName}
-                              <span className="text-xs text-gray-400 ml-1">(ID: {issue.createdByUserId.id})</span>
+                              {issue.createdByUser.firstName} {issue.createdByUser.lastName}
+                              <span className="text-xs text-gray-400 ml-1">(ID: {issue.createdByUser.id})</span>
                             </div>
                           </div>
                           <div>
@@ -675,10 +506,10 @@ const InspectionList: React.FC = () => {
                           <h4 className="text-sm font-medium text-gray-700 mb-2">Comments:</h4>
                           {isIssueResolved(issue.status) ? (
                             <div className="w-full p-3 text-sm border border-gray-300 rounded-md bg-gray-50">
-                              {issue.InspectionResolutionComments && issue.InspectionResolutionComments.length > 0 ? (
+                              {issue.inspectionResolutionComments && issue.inspectionResolutionComments.length > 0 ? (
                                 <div>
-                                  {issue.InspectionResolutionComments
-                                    .filter(comment => comment.type === "RESOLUTION_COMMENT")
+                                  {issue.inspectionResolutionComments
+                                    .filter((comment) => comment.type === "RESOLUTION_COMMENT")
                                     .map((comment, index) => (
                                       <div key={index} className="mb-2 last:mb-0">
                                         <div className="text-gray-700 mb-1">{comment.comment}</div>
@@ -694,7 +525,7 @@ const InspectionList: React.FC = () => {
                                         )}
                                       </div>
                                     ))}
-                                  {issue.InspectionResolutionComments.filter(comment => comment.type === "RESOLUTION_COMMENT").length === 0 && (
+                                  {issue.inspectionResolutionComments.filter((comment) => comment.type === "RESOLUTION_COMMENT").length === 0 && (
                                     <div className="text-gray-500 italic">No resolution comments available</div>
                                   )}
                                 </div>
@@ -704,8 +535,8 @@ const InspectionList: React.FC = () => {
                             </div>
                           ) : (
                             <textarea
-                              value={issueComments[issue.id] || ''}
-                              onChange={(e) => handleCommentChange(issue.id, e.target.value)}
+                              value={issueComments[issue.issueId] || ''}
+                              onChange={(e) => handleCommentChange(issue.issueId, e.target.value)}
                               placeholder="Add comments..."
                               className="w-full p-3 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                               rows={3}
@@ -833,99 +664,12 @@ const InspectionList: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredInspections.map((inspection) => (
-                  <div 
+                  <InspectionCard
                     key={inspection.inspectionId}
-                    className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer hover:border-blue-300"
-                    onClick={() => handleInspectionClick(inspection.inspectionId)}
-                  >
-                    {/* Inspection ID Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900">
-                        ID: {inspection.inspectionId}
-                      </h4>
-                      <span className={getStatusBadge(inspection.status)}>
-                        {inspection.status.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* Statistics */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-500">Total Issues:</span>
-                        <span className="text-sm font-semibold text-gray-900">{inspection.issueCount}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-500">Open Issues:</span>
-                        <span className={`text-sm font-semibold ${
-                          inspection.openIssuesCount > 0 ? 'text-orange-600' : 'text-gray-900'
-                        }`}>
-                          {inspection.openIssuesCount}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-500">Closed Issues:</span>
-                        <span className={`text-sm font-semibold ${
-                          inspection.closedIssuesCount > 0 ? 'text-green-600' : 'text-gray-900'
-                        }`}>
-                          {inspection.closedIssuesCount}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Progress</span>
-                        <span>{Math.round((inspection.closedIssuesCount / inspection.issueCount) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${(inspection.closedIssuesCount / inspection.issueCount) * 100}%` 
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Dates */}
-                    <div className="space-y-2 text-xs text-gray-500">
-                      <div>
-                        <span className="font-medium">Created:</span> {' '}
-                        {new Date(inspection.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                      <div>
-                        <span className="font-medium">Last Updated:</span> {' '}
-                        {new Date(inspection.lastUpdated).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </div>
-
-                    {/* View Details Button */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <Button 
-                        onClick={() => handleInspectionClick(inspection.inspectionId)}
-                        variant="primary"
-                        size="small"
-                        className="w-full"
-                      >
-                        View Issues ({inspection.issueCount})
-                      </Button>
-                    </div>
-                  </div>
+                    inspection={inspection}
+                    onInspectionClick={handleInspectionClick}
+                    getStatusBadge={getStatusBadge}
+                  />
                 ))}
               </div>
             </div>
