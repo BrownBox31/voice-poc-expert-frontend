@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
   const fetchInspections = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.get<InspectionListResponse>(ApiEndpoints.ALL_INSPECTIONS);      
+      const response = await apiService.get<InspectionListResponse>(ApiEndpoints.ALL_INSPECTIONS);            
       
       // The API is returning the data directly, not wrapped in a data property
       let fetchedInspections: VehicleInspection[] = [];
@@ -45,6 +45,7 @@ const Dashboard: React.FC = () => {
       setInspections(fetchedInspections);
       setIsLoading(false);
     } catch (error) {
+      console.log(error);
       setInspections([]);
       setIsLoading(false);
     }

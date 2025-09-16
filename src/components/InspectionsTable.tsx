@@ -14,15 +14,23 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter inspections based on VIN search
+  // Filter and sort inspections based on VIN search and inspection date
   const filteredInspections = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return inspections;
+    let filtered = inspections;
+    
+    // Filter by search term if provided
+    if (searchTerm.trim()) {
+      filtered = inspections.filter(inspection => 
+        inspection.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
+      );
     }
     
-    return inspections.filter(inspection => 
-      inspection.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
-    );
+    // Sort by inspection date (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : 0;
+      const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : 0;
+      return dateB - dateA; // Newest first (descending order)
+    });
   }, [inspections, searchTerm]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +168,9 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
                   Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date of Latest Inspection
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -180,6 +191,11 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
                     <span className={getStatusBadge(inspection.overallStatus)}>
                       {inspection.overallStatus.replace('_', ' ').toUpperCase()}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="text-sm text-gray-900">
+                      {inspection.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString() : 'N/A'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <button

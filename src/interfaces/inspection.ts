@@ -5,6 +5,7 @@ export interface VehicleInspection {
   vin: string;
   overallStatus: string;
   inspectionCount: number;
+  inspectionDate:string
 }
 
 // Detailed Vehicle Inspection Types (for future use)
