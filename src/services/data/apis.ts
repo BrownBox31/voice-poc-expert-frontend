@@ -14,4 +14,6 @@ export const ApiEndpoints = {
   CREATE_MODEL_VIN_MAP: "model/create-multiple-model-vin-map/",
   FETCH_CHECLIST: "checklist/" /** @append /VIN @append View= */,
   CREATE_WORKLINE: "workline/create" /** @see ICreateWorkline */,
+  CREATE_RESOLUTION: '/resolution/create',
+  DELETE_RESOLUTION_ISSUE: '/resolution/', 
 } as const;

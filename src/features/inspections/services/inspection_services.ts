@@ -247,3 +247,74 @@ export const updateIssueStatus = async (issueId: number, comment: string): Promi
     throw new Error(`Failed to update issue status: ${error}`);
   }
 };
+
+export const updateIssue = async (
+  issueId: number,
+  data: {
+    status?: 'open' | 'closed';
+    comments?: string;
+    issueDescription?: string;
+  }
+): Promise<void> => {
+  try {
+    const url = `${ApiEndpoints.UPDATE_ISSUE_STATUS}${issueId}`;
+
+    // Build payload dynamically (ONLY include passed fields)
+    const payload: Record<string, any> = {};
+
+    if (data.status) {
+      payload.status = data.status;
+    }
+
+    if (data.comments?.trim()) {
+      payload.comments = data.comments.trim();
+    }
+
+    if (data.issueDescription?.trim()) {
+      payload.issueDescription = data.issueDescription.trim();
+    }
+
+    if (Object.keys(payload).length === 0) {
+      throw new Error('No valid fields provided to update');
+    }
+
+    await apiService.patch(url, payload);
+  } catch (error) {
+    throw new Error(`Failed to update issue: ${error}`);
+  }
+};
+
+// inspection_services.ts
+export const createIssueResolution = async (
+  inspectionIssueId: number,
+  description: string,
+  actionType?: string
+): Promise<void> => {
+  try {
+    const payload = {
+      inspectionIssueId,
+      description: description.trim(),
+      action_type: actionType ?? '',
+
+      //  Optional fields – enable when needed
+      // attachment_urls: [],       // string[]
+      // voice_clip_url: '',        // string
+    };
+
+    await apiService.post('/resolution/create', payload);
+  } catch (error) {
+    throw new Error(`Failed to create issue resolution: ${error}`);
+  }
+};
+
+export const deleteIssueResolution = async (issueId: number): Promise<void> => {
+  try {
+    const url = `${ApiEndpoints.DELETE_RESOLUTION_ISSUE}${issueId}`;
+    await apiService.delete(url);
+  } catch (error) {
+    throw new Error(`Failed to delete issue: ${error}`);
+  }
+};
+
+
+

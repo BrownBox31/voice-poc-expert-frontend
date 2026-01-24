@@ -39,7 +39,8 @@ class ApiService {
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
     try {
-      const response: AxiosResponse<ApiResponse<T>> = await apiClient.post(url, data, config);
+      // const response: AxiosResponse<ApiResponse<T>> = await apiClient.post(url, data, config);
+      const response: AxiosResponse<ApiResponse<T>> = await apiClient.post(url, data, {"headers": {"Access-Control-Allow-Origin": "*"}});
       return response.data;
     } catch (error) {
       throw this.handleError(error, 'POST request failed');
