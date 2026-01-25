@@ -244,7 +244,7 @@ const InspectionList: React.FC = () => {
         Number(inspectionId),
         vin,
         newIssueDescription,
-       // newIssueActionType
+        // newIssueActionType
       );
 
       // Refresh issues
@@ -264,24 +264,24 @@ const InspectionList: React.FC = () => {
     }
   };
 
-const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
-  console.log("Delete clicked for issueId:", issueId, "vin:", vinNumber);
+  const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
+    console.log("Delete clicked for issueId:", issueId, "vin:", vinNumber);
 
-  try {
-    await deleteIssueResolution(issueId);
+    try {
+      await deleteIssueResolution(issueId);
 
-    alert(`Issue #${issueId} deleted successfully`);
+      alert(`Issue #${issueId} deleted successfully`);
 
-    // refresh list after delete
-    const res = await fetchInspectionsByVin(vinNumber);
-    setInspections(res.inspections);
-    setIssuesData(res.issuesData);
+      // refresh list after delete
+      const res = await fetchInspectionsByVin(vinNumber);
+      setInspections(res.inspections);
+      setIssuesData(res.issuesData);
 
-  } catch (error: any) {
-    console.error("Delete failed:", error);
-    alert("Failed to delete issue. Please try again.");
-  }
-};
+    } catch (error: any) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete issue. Please try again.");
+    }
+  };
 
 
   if (isLoading) return <Loader />;
@@ -427,16 +427,22 @@ const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
                   )}
 
                   {/* Audio Player - Show if we have resolution audio */}
-  {(() => {
-                    const audioLink = selectedInspectionIssues.length > 0 
-                      && selectedInspectionIssues[0].inspectionResolutionComments 
-                      && selectedInspectionIssues[0].inspectionResolutionComments.length > 0
-                      ? selectedInspectionIssues[0].inspectionResolutionComments[0].voiceClipUrl 
-                      : null;
-                    
+                  {(() => {
+                    const rawAudioLink =
+                      selectedInspectionIssues.length > 0 &&
+                        selectedInspectionIssues[0].inspectionResolutionComments &&
+                        selectedInspectionIssues[0].inspectionResolutionComments.length > 0
+                        ? selectedInspectionIssues[0].inspectionResolutionComments[0].voiceClipUrl
+                        : null;
+
+                    const audioLink = buildFileUrl(rawAudioLink);
+
                     return audioLink ? (
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm font-medium text-gray-500 mb-2">Listen to Issue Recording</p>
+                        <p className="text-sm font-medium text-gray-500 mb-2">
+                          Listen to Issue Recording
+                        </p>
+
                         <audio controls className="w-full h-8">
                           <source src={audioLink} type="audio/mpeg" />
                           <source src={audioLink} type="audio/wav" />
@@ -446,6 +452,7 @@ const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
                       </div>
                     ) : null;
                   })()}
+
                 </div>
               </div>
             </div>
@@ -554,7 +561,7 @@ const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
                           <div className="flex items-center space-x-2">
                             {/* Delete Icon */}
                             <button
-                                onClick={() => handleDeleteIssue(issue.issueId, vin!)}
+                              onClick={() => handleDeleteIssue(issue.issueId, vin!)}
                               className="text-red-500 hover:text-red-700 transition"
                               title="Delete Issue"
                               type="button"
