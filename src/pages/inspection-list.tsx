@@ -238,11 +238,13 @@ const InspectionList: React.FC = () => {
 
     try {
       setCreatingIssue(true);
-
+      console.log(filteredInspections)
+      const inspectionId = filteredInspections[0]?.inspectionId;
       await createIssueResolution(
-        Number(selectedInspectionId),
+        Number(inspectionId),
+        vin,
         newIssueDescription,
-        newIssueActionType
+       // newIssueActionType
       );
 
       // Refresh issues
@@ -789,7 +791,7 @@ const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
                   </div>
 
                   {/* Action Type */}
-                  <div className="mb-4">
+                  {/* <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Action Type (optional)
                     </label>
@@ -799,7 +801,7 @@ const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
                       className="w-full p-2 text-sm border border-gray-300 rounded-md"
                       placeholder="MANUAL_ENTRY"
                     />
-                  </div>
+                  </div> */}
 
                   {/* Footer */}
                   <div className="flex justify-end gap-3">

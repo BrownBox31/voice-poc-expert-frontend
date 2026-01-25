@@ -286,22 +286,24 @@ export const updateIssue = async (
 
 // inspection_services.ts
 export const createIssueResolution = async (
-  inspectionIssueId: number,
-  description: string,
-  actionType?: string
+  inspectionId: number,
+  vin: string | undefined,
+  issueDescription: string,
+ // actionType?: string
 ): Promise<void> => {
   try {
     const payload = {
-      inspectionIssueId,
-      description: description.trim(),
-      action_type: actionType ?? '',
+      inspectionId,
+      vin,
+      issueDescription: issueDescription.trim(),
+    //  action_type: actionType ?? '',
 
       //  Optional fields – enable when needed
       // attachment_urls: [],       // string[]
       // voice_clip_url: '',        // string
     };
-
-    await apiService.post('/resolution/create', payload);
+console.log("payload", payload);
+    await apiService.post('/resolution/create/issue', payload);
   } catch (error) {
     throw new Error(`Failed to create issue resolution: ${error}`);
   }
