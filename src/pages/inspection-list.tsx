@@ -40,11 +40,11 @@ const InspectionList: React.FC = () => {
   const [issueSearchTerm, setIssueSearchTerm] = useState<string>('');
   const [editingIssueId, setEditingIssueId] = useState<number | null>(null);
   const [editedDescription, setEditedDescription] = useState<string>('');
-  const [updatingDescription, setUpdatingDescription] = useState<boolean>(false);
+  const [, setUpdatingDescription] = useState<boolean>(false);
   const [addIssueOpen, setAddIssueOpen] = useState(false);
 
   const [newIssueDescription, setNewIssueDescription] = useState('');
-  const [newIssueActionType, setNewIssueActionType] = useState('');
+  const [, setNewIssueActionType] = useState('');
   const [creatingIssue, setCreatingIssue] = useState(false);
 
 

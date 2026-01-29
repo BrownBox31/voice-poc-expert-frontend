@@ -15,23 +15,24 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter and sort inspections based on VIN search and inspection date
-  const filteredInspections = useMemo(() => {
-    let filtered = inspections;
-    
-    // Filter by search term if provided
-    if (searchTerm.trim()) {
-      filtered = inspections.filter(inspection => 
-        inspection.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
-      );
-    }
-    
-    // Sort by inspection date (newest first)
-    return filtered.sort((a, b) => {
-      const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : 0;
-      const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : 0;
-      return dateB - dateA; // Newest first (descending order)
-    });
-  }, [inspections, searchTerm]);
+const filteredInspections = useMemo(() => {
+  let filtered = inspections;
+
+  if (searchTerm.trim()) {
+    filtered = inspections.filter(i =>
+      i.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
+    );
+  }
+
+  return [...filtered].sort((a, b) => {
+    const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : Infinity;
+    const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : Infinity;
+
+    return dateA - dateB; // 🔼 Ascending (oldest first)
+  });
+}, [inspections, searchTerm]);
+
+   console.log("filteredInspections", filteredInspections);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
