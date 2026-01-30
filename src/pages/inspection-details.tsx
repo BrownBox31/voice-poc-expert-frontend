@@ -17,15 +17,21 @@ interface InspectionIssue {
   status: string;
   vin: string;
   issueDescription: string;
-  createdAt: string; // ISO date string
-  inspectionId: string; // New field for inspection ID
-  InspectionResolutionComments?: InspectionResolutionComment[]; // Array of resolution comments with S3 audio URLs
+  createdAt: string;
+  inspectionId: string;
+
+  audioUrl?: string | null;
+  view?: string | null;
+
+  InspectionResolutionComments?: InspectionResolutionComment[];
+
   createdByUserId: {
     id: number;
     firstName: string;
     lastName: string;
   };
 }
+
 
 // API returns an array of inspection issues
 type InspectionDetailsResponse = InspectionIssue[];
@@ -56,11 +62,42 @@ const InspectionDetails: React.FC = () => {
       // Use data from navigation state
       setInspection(navigationState.issues);
       setIsLoading(false);
+      
     } else if (vin && inspectionId) {
       // Fallback: fetch data if navigation state is missing
       fetchInspectionDetails(vin, inspectionId);
     }
   }, [vin, inspectionId, location.state]);
+
+const fetchInspectionDetailss = async (vinNumber: string) => {
+  console.log('fetchInspectionDetails called with:', vinNumber);
+
+  try {
+    const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
+    console.log('Final API URL:', url);
+
+    const response = await apiService.get(url);
+    console.log('API RESPONSE:', response);
+  } catch (error) {
+    console.error('API ERROR:', error);
+  }
+};
+
+
+useEffect(() => {
+  console.log('useEffect triggered');
+  console.log('VIN inside useEffect:', vin);
+
+  if (!vin) {
+    console.log('VIN missing, API will not be called');
+    return;
+  }
+
+  fetchInspectionDetailss(vin);
+}, [vin]);
+
+
+
 
   const fetchInspectionDetails = async (vinNumber: string, inspectionIdParam: string) => {
     try {
@@ -70,7 +107,7 @@ const InspectionDetails: React.FC = () => {
       // Construct the full URL by appending the VIN to the endpoint
       const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
       const response = await apiService.get<InspectionDetailsResponse>(url);
-
+console.log("Inspection Details Response:", response);
       // Handle response based on API structure
       let inspectionData: InspectionDetailsResponse | null = null;
       

@@ -16,4 +16,7 @@ export const ApiEndpoints = {
   CREATE_WORKLINE: "workline/create" /** @see ICreateWorkline */,
   CREATE_RESOLUTION: '/resolution/create/issue',
   DELETE_RESOLUTION_ISSUE: '/resolution/', 
+  ANALYTICS_COMMENT_COUNTS: '/analytics/comment-counts',
+  ANALYTICS_COMMENT_COUNTS_ALL: '/analytics/comment-counts/all',
+  ANALYTICS_DEFECT_COUNTS: '/analytics/defect-counts',
 } as const;

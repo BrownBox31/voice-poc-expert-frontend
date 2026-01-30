@@ -39,6 +39,7 @@ class ApiService {
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
     try {
+      console.log(config);
       // const response: AxiosResponse<ApiResponse<T>> = await apiClient.post(url, data, config);
       const response: AxiosResponse<ApiResponse<T>> = await apiClient.post(url, data, {"headers": {"Access-Control-Allow-Origin": "*"}});
       return response.data;

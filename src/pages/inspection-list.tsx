@@ -370,7 +370,7 @@ const InspectionList: React.FC = () => {
 
   // Show inspection details if an inspection is selected
   if (selectedInspectionId) {
-    const selectedInspection = inspections.find(insp => insp.inspectionId === selectedInspectionId);
+    //const selectedInspection = inspections.find(insp => insp.inspectionId === selectedInspectionId);
 
     return (
       <div className="min-h-screen bg-gray-50 pb-12">
@@ -412,50 +412,69 @@ const InspectionList: React.FC = () => {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             {/* Inspection Overview */}
-            <div className="bg-white shadow rounded-lg mb-6">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Overview</h3>
+           <div className="bg-white shadow rounded-lg mb-6">
+  <div className="px-4 py-5 sm:p-6">
+    <h3 className="text-lg font-medium text-gray-900 mb-4">
+      Inspection Overview
+    </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedInspection && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-500">Status</p>
-                      <span className={getStatusBadge(selectedInspection.status)}>
-                        {selectedInspection.status.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                  {/* Audio Player - Show if we have resolution audio */}
-                  {(() => {
-                    const rawAudioLink =
-                      selectedInspectionIssues.length > 0 &&
-                        selectedInspectionIssues[0].inspectionResolutionComments &&
-                        selectedInspectionIssues[0].inspectionResolutionComments.length > 0
-                        ? selectedInspectionIssues[0].inspectionResolutionComments[0].voiceClipUrl
-                        : null;
+      {/* 🔊 ORIGINAL / DENOISED INSPECTION AUDIO */}
+      {(() => {
+        const rawOriginalAudio =
+          selectedInspectionIssues?.[0]?.audioUrl ?? null;
 
-                    const audioLink = buildFileUrl(rawAudioLink);
+        const originalAudioLink = buildFileUrl(rawOriginalAudio);
 
-                    return audioLink ? (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Listen to Issue Recording
-                        </p>
+        return originalAudioLink ? (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm font-medium text-gray-500 mb-2">
+              Original Inspection Audio
+            </p>
 
-                        <audio controls className="w-full h-8">
-                          <source src={audioLink} type="audio/mpeg" />
-                          <source src={audioLink} type="audio/wav" />
-                          <source src={audioLink} type="audio/ogg" />
-                          Your browser does not support the audio element.
-                        </audio>
-                      </div>
-                    ) : null;
-                  })()}
+            <audio controls className="w-full h-8">
+              <source src={originalAudioLink} />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        ) : (
+          <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
+            Original Inspection Audio not available
+          </div>
+        );
+      })()}
 
-                </div>
-              </div>
-            </div>
+      {/* 🎙 ISSUE / VOICE CLIP AUDIO */}
+      {(() => {
+        const rawVoiceClip =
+          selectedInspectionIssues?.[0]?.inspectionResolutionComments?.[0]
+            ?.voiceClipUrl ?? null;
+
+        const voiceClipLink = buildFileUrl(rawVoiceClip);
+
+        return voiceClipLink ? (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm font-medium text-gray-500 mb-2">
+              Denoised Inspection Audio
+            </p>
+
+            <audio controls className="w-full h-8">
+              <source src={voiceClipLink} />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        ) : (
+          <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
+            Issue Voice Recording not available
+          </div>
+        );
+      })()}
+
+    </div>
+  </div>
+</div>
+
 
             {/* Filters */}
             {selectedInspectionIssues.length > 0 && (

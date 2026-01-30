@@ -4,6 +4,9 @@ import apiClient from '../data/interceptor';
 export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
+  ANALYTICS: '/analytics',
+  ANALYTICS_ISSUES: '/analytics/issues',
+
   INSPECTION_LIST: '/inspection/:vin',
   INSPECTION_DETAILS: '/inspection/:vin/:inspectionId',
   ROOT: '/',

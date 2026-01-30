@@ -8,6 +8,8 @@ import Login from '../../pages/login';
 import Dashboard from '../../pages/dashboard';
 import InspectionList from '../../pages/inspection-list';
 import InspectionDetails from '../../pages/inspection-details';
+import Analytics from '../../pages/analytics';
+import AnalyticsIssuesPage from '../../pages/analytics-issues';
 
 const AppRouter: React.FC = () => {
   return (
@@ -43,6 +45,24 @@ const AppRouter: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+
+        <Route 
+  path={ROUTES.ANALYTICS} 
+  element={
+    <ProtectedRoute>
+      <Analytics />
+    </ProtectedRoute>
+  } 
+/>
+<Route
+  path={ROUTES.ANALYTICS_ISSUES}
+  element={
+    <ProtectedRoute>
+      <AnalyticsIssuesPage />
+    </ProtectedRoute>
+  }
+/>
+
         
         <Route 
           path={ROUTES.INSPECTION_LIST} 

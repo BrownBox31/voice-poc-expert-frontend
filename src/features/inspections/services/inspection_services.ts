@@ -15,6 +15,8 @@ export interface InspectionIssue {
   issueDescription: string;
   createdAt: string;
   inspectionId: number;
+  audioUrl?: string | null;
+  view?: string | null;
   inspectionResolutionComments?: InspectionResolutionComment[];
   createdByUser: {
     id: number;
@@ -207,7 +209,7 @@ export const fetchInspectionsByVin = async (vinNumber: string): Promise<{
     // Use the inspection details endpoint to get all issues for this VIN
     const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
     const response = await apiService.get<InspectionIssuesResponse>(url);
-
+console.log("API response for inspections by VIN:", response);
     // Process the API response
     const inspectionData = processApiResponse(response);
     

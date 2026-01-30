@@ -19,13 +19,9 @@ const Dashboard: React.FC = () => {
   const fetchInspections = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.get<InspectionListResponse>(ApiEndpoints.ALL_INSPECTIONS);            
-      
+      const response = await apiService.get<InspectionListResponse>(ApiEndpoints.ALL_INSPECTIONS);
       // The API is returning the data directly, not wrapped in a data property
       let fetchedInspections: VehicleInspection[] = [];
-      
-      
-
       if (Array.isArray(response)) {
         // Response is directly an array
         fetchedInspections = response;
@@ -41,7 +37,7 @@ const Dashboard: React.FC = () => {
           }
         }
       }
-      
+
       setInspections(fetchedInspections);
       setIsLoading(false);
     } catch (error) {
@@ -59,7 +55,7 @@ const Dashboard: React.FC = () => {
     navigate(`/inspection/${inspection.vin}`);
   };
 
-  
+
 
   if (isLoading) {
     return (
@@ -88,6 +84,13 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex items-center space-x-4">
               <Button
+                onClick={() => navigate('/analytics')}
+                variant="primary"
+                size="small"
+              >
+                Analytics
+              </Button>
+              <Button
                 onClick={handleLogout}
                 variant="secondary"
                 size="small"
@@ -102,8 +105,8 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <InspectionsTable 
-            inspections={inspections} 
+          <InspectionsTable
+            inspections={inspections}
             isLoading={isLoading}
             onInspectionClick={handleInspectionClick}
           />
