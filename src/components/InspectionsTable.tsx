@@ -15,24 +15,24 @@ const InspectionsTable: React.FC<InspectionsTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter and sort inspections based on VIN search and inspection date
-const filteredInspections = useMemo(() => {
-  let filtered = inspections;
+  const filteredInspections = useMemo(() => {
+    let filtered = inspections;
 
-  if (searchTerm.trim()) {
-    filtered = inspections.filter(i =>
-      i.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
-    );
-  }
+    if (searchTerm.trim()) {
+      filtered = inspections.filter(i =>
+        i.vin.toLowerCase().includes(searchTerm.toLowerCase().trim())
+      );
+    }
 
-  return [...filtered].sort((a, b) => {
-    const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : Infinity;
-    const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : Infinity;
+    return [...filtered].sort((a, b) => {
+      const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : Infinity;
+      const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : Infinity;
 
-    return dateA - dateB; // 🔼 Ascending (oldest first)
-  });
-}, [inspections, searchTerm]);
+      return dateA - dateB; // 🔼 Ascending (oldest first)
+    });
+  }, [inspections, searchTerm]);
 
-   console.log("filteredInspections", filteredInspections);
+  console.log("filteredInspections", filteredInspections);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
@@ -43,7 +43,7 @@ const filteredInspections = useMemo(() => {
   };
   const getStatusBadge = (status: string) => {
     const baseClasses = "px-2 py-1 text-xs font-medium rounded-full";
-    
+
     switch (status.toUpperCase()) {
       case 'COMPLETED':
         return `${baseClasses} bg-green-100 text-green-800`;
@@ -127,7 +127,7 @@ const filteredInspections = useMemo(() => {
           <h3 className="text-lg font-medium text-gray-900 mb-4 sm:mb-0">
             Vehicle Inspections ({filteredInspections.length}{inspections.length !== filteredInspections.length ? ` of ${inspections.length}` : ''})
           </h3>
-          
+
           {/* Search Input */}
           <div className="relative max-w-xs w-full sm:w-auto">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -159,61 +159,71 @@ const filteredInspections = useMemo(() => {
           renderEmptyState()
         ) : (
           <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  VIN
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date of Latest Inspection
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredInspections.map((inspection, index) => (
-                <tr 
-                  key={inspection.vin || index}
-                  className={`hover:bg-gray-50 ${onInspectionClick ? 'cursor-pointer' : ''}`}
-                  onClick={() => onInspectionClick?.(inspection)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm font-medium text-gray-900">
-                      {inspection.vin}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={getStatusBadge(inspection.overallStatus)}>
-                      {inspection.overallStatus.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900">
-                      {inspection.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString() : 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <button
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onInspectionClick?.(inspection);
-                      }}
-                    >
-                      View Details
-                    </button>
-                  </td>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    VIN
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date of Latest Inspection
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInspections.map((inspection, index) => (
+                  <tr
+                    key={inspection.vin || index}
+                    className={`hover:bg-gray-50 ${onInspectionClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onInspectionClick?.(inspection)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        {inspection.vin}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className={getStatusBadge(inspection.overallStatus)}>
+                        {inspection.overallStatus.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm text-gray-900">
+                        {inspection.inspectionDate
+                          ? new Date(inspection.inspectionDate).toLocaleString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                          : "N/A"}
+                      </div>
+
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onInspectionClick?.(inspection);
+                        }}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

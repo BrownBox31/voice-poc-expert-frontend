@@ -20,7 +20,7 @@ import {
 import Loader from '../components/loader';
 import { FiTrash2, FiEdit } from "react-icons/fi";
 import { buildFileUrl } from "../utils/fileUrl";
-
+import swal from "sweetalert";
 
 
 const InspectionList: React.FC = () => {
@@ -264,13 +264,33 @@ const InspectionList: React.FC = () => {
     }
   };
 
+
+
   const handleDeleteIssue = async (issueId: number, vinNumber: string) => {
-    console.log("Delete clicked for issueId:", issueId, "vin:", vinNumber);
+    const willDelete = await swal({
+      title: "Are you sure?",
+      text: `Once deleted, Issue #${issueId} will be closed and cannot be recovered.`,
+      icon: "warning",
+      buttons: ["Cancel", "Yes, delete it"],
+      dangerMode: true,
+    });
+
+    if (!willDelete) {
+      return; // user cancelled
+    }
 
     try {
       await deleteIssueResolution(issueId);
 
-      alert(`Issue #${issueId} deleted successfully`);
+      await swal({
+        title: "Deleted!",
+        text: `Issue #${issueId} has been deleted successfully.`,
+        icon: "success",
+        timer: 2000,
+        buttons: {
+          confirm: false,
+        }
+      });
 
       // refresh list after delete
       const res = await fetchInspectionsByVin(vinNumber);
@@ -279,9 +299,16 @@ const InspectionList: React.FC = () => {
 
     } catch (error: any) {
       console.error("Delete failed:", error);
-      alert("Failed to delete issue. Please try again.");
+
+      swal({
+        title: "Error",
+        text: "Failed to delete issue. Please try again.",
+        icon: "error",
+      });
     }
   };
+
+
 
 
   if (isLoading) return <Loader />;
@@ -345,11 +372,16 @@ const InspectionList: React.FC = () => {
             <div className="bg-white shadow rounded-lg p-6">
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-gray-400 text-xl">📋</span>
+                  <span className="text-gray-400 text-3xl mb-3 block">📋</span>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Inspections Found</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  No Issues Found
+                </h3>
+
                 <p className="text-gray-600">
-                  {searchTerm ? `No inspections found matching "${searchTerm}"` : `No inspections found for VIN: ${vin}`}
+                  {searchTerm
+                    ? `No inspections match "${searchTerm}". Try a different keyword.`
+                    : `There are currently no active issues for VIN ${vin}.`}
                 </p>
                 {searchTerm && (
                   <Button
@@ -412,68 +444,68 @@ const InspectionList: React.FC = () => {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             {/* Inspection Overview */}
-           <div className="bg-white shadow rounded-lg mb-6">
-  <div className="px-4 py-5 sm:p-6">
-    <h3 className="text-lg font-medium text-gray-900 mb-4">
-      Inspection Overview
-    </h3>
+            <div className="bg-white shadow rounded-lg mb-6">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Inspection Overview
+                </h3>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-      {/* 🔊 ORIGINAL / DENOISED INSPECTION AUDIO */}
-      {(() => {
-        const rawOriginalAudio =
-          selectedInspectionIssues?.[0]?.audioUrl ?? null;
+                  {/* 🔊 ORIGINAL / DENOISED INSPECTION AUDIO */}
+                  {(() => {
+                    const rawOriginalAudio =
+                      selectedInspectionIssues?.[0]?.audioUrl ?? null;
 
-        const originalAudioLink = buildFileUrl(rawOriginalAudio);
+                    const originalAudioLink = buildFileUrl(rawOriginalAudio);
 
-        return originalAudioLink ? (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 mb-2">
-              Original Inspection Audio
-            </p>
+                    return originalAudioLink ? (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-sm font-medium text-gray-500 mb-2">
+                          Original Inspection Audio
+                        </p>
 
-            <audio controls className="w-full h-8">
-              <source src={originalAudioLink} />
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        ) : (
-          <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
-            Original Inspection Audio not available
-          </div>
-        );
-      })()}
+                        <audio controls className="w-full h-8">
+                          <source src={originalAudioLink} />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
+                        Original Inspection Audio not available
+                      </div>
+                    );
+                  })()}
 
-      {/* 🎙 ISSUE / VOICE CLIP AUDIO */}
-      {(() => {
-        const rawVoiceClip =
-          selectedInspectionIssues?.[0]?.inspectionResolutionComments?.[0]
-            ?.voiceClipUrl ?? null;
+                  {/* 🎙 ISSUE / VOICE CLIP AUDIO */}
+                  {(() => {
+                    const rawVoiceClip =
+                      selectedInspectionIssues?.[0]?.inspectionResolutionComments?.[0]
+                        ?.voiceClipUrl ?? null;
 
-        const voiceClipLink = buildFileUrl(rawVoiceClip);
+                    const voiceClipLink = buildFileUrl(rawVoiceClip);
 
-        return voiceClipLink ? (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 mb-2">
-              Denoised Inspection Audio
-            </p>
+                    return voiceClipLink ? (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-sm font-medium text-gray-500 mb-2">
+                          Denoised Inspection Audio
+                        </p>
 
-            <audio controls className="w-full h-8">
-              <source src={voiceClipLink} />
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        ) : (
-          <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
-            Issue Voice Recording not available
-          </div>
-        );
-      })()}
+                        <audio controls className="w-full h-8">
+                          <source src={voiceClipLink} />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-400">
+                        Issue Voice Recording not available
+                      </div>
+                    );
+                  })()}
 
-    </div>
-  </div>
-</div>
+                </div>
+              </div>
+            </div>
 
 
             {/* Filters */}
