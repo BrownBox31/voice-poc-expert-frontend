@@ -29,10 +29,11 @@ export default function AnalyticsPage() {
     /* =======================
        FILTER STATE
     ======================= */
-    const [range, setRange] = useState<'7' | '30' | 'all'>('7');
+    const [range, setRange] = useState<'today' | '7' | '30' | 'all'>('today');
+
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
-    const [searchIssue, ] = useState('');
+    const [searchIssue,] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -48,11 +49,13 @@ export default function AnalyticsPage() {
 
 
     const computedLimit = useMemo(() => {
+        if (range === 'today') return 200;
         if (range === '7') return 200;
         if (range === '30') return 500;
         if (fromDate && toDate) return 800;
-        return undefined; // 👈 ALL TIME
+        return undefined;
     }, [range, fromDate, toDate]);
+
 
     useEffect(() => {
         setLoading(true);
@@ -90,6 +93,13 @@ export default function AnalyticsPage() {
                 const day = new Date(d.day);
                 return day >= from && day <= to;
             });
+        }
+        else if (range === 'today') {
+            const today = new Date().toISOString().split('T')[0];
+
+            result = result.filter(d =>
+                d.day.split('T')[0] === today
+            );
         }
         // preset range
         else if (range !== 'all') {
@@ -259,24 +269,30 @@ export default function AnalyticsPage() {
             <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
                 {/* FILTERS */}
                 <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex gap-2">
-                        {['7', '30'].map(r => (
-                            <button
-                                key={r}
-                                onClick={() => {
-                                    setRange(r as any);
-                                    setFromDate('');
-                                    setToDate('');
-                                }}
-                                className={`px-4 py-2 rounded-md text-sm border ${range === r && !fromDate
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-700 border-gray-300'
-                                    }`}
-                            >
-                                {r === 'all' ? 'All Time' : `Last ${r} Days`}
-                            </button>
-                        ))}
-                    </div>
+                   <div className="flex gap-2">
+    {['today', '7', '30'].map(r => (
+        <button
+            key={r}
+            onClick={() => {
+                setRange(r as any);
+                setFromDate('');
+                setToDate('');
+            }}
+            className={`px-4 py-2 rounded-md text-sm border ${
+                range === r && !fromDate
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300'
+            }`}
+        >
+            {r === 'today'
+                ? 'Today'
+                : r === 'all'
+                ? 'All Time'
+                : `Last ${r} Days`}
+        </button>
+    ))}
+</div>
+
 
                     <input
                         type="date"

@@ -15,7 +15,8 @@ import {
   createIssueResolution,
   type InspectionSummary,
   type InspectionIssue,
-  deleteIssueResolution
+  deleteIssueResolution,
+  addFollowupComment
 } from '../features/inspections/services/inspection_services';
 import Loader from '../components/loader';
 import { FiTrash2, FiEdit } from "react-icons/fi";
@@ -166,6 +167,54 @@ const InspectionList: React.FC = () => {
       });
     }
   };
+
+  const handleAddFollowup = async (issueId: number) => {
+    const commentText = issueComments[issueId]?.trim();
+
+    if (!commentText) {
+      alert("Please enter a follow-up comment first");
+      return;
+    }
+
+    try {
+      setUpdatingIssues(prev => new Set([...prev, issueId]));
+      setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
+
+      await addFollowupComment(issueId, commentText);
+
+      // Mark success in UI (same pattern as update)
+      setUpdateSuccess(prev => ({ ...prev, [issueId]: true }));
+
+      // Clear textarea after success
+      setIssueComments(prev => {
+        const updated = { ...prev };
+        delete updated[issueId];
+        return updated;
+      });
+
+      // Show success feedback briefly
+      setTimeout(() => {
+        setUpdateSuccess(prev => ({ ...prev, [issueId]: false }));
+      }, 3000);
+
+      // ✅ REFRESH DATA — SAME AS handleUpdateIssueStatus
+      if (vin) {
+        await handleFetchInspections(vin);
+      }
+
+    } catch (err) {
+      console.error("Failed to update:", err);
+      alert("Failed to add follow-up. Please try again.");
+    } finally {
+      setUpdatingIssues(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueId);
+        return newSet;
+      });
+    }
+  };
+
+
 
   const handleEditClick = (issueId: number, currentDesc: string) => {
     setEditingIssueId(issueId);
@@ -411,9 +460,23 @@ const InspectionList: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Inspection Details</h1>
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleBackToInspectionGrid}
+                    className="text-gray-700 hover:text-blue-600 transition"
+                    title="Back"
+                  >
+                    ←
+                  </button>
+
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Inspection Details
+                  </h1>
+                </div>
+
                 <p className="text-sm text-gray-600">
-                  VIN: {vin} • Inspection ID: {selectedInspectionId}
+                  VIN: {vin} • {selectedInspectionIssues?.[0]?.checklistView ?? null} • Inspection ID: {selectedInspectionId}
                   {filteredIssues.length > 0 && (
                     <>
                       {` • ${filteredIssues.length} of ${selectedInspectionIssues.length} issue${selectedInspectionIssues.length !== 1 ? 's' : ''}`}
@@ -452,7 +515,7 @@ const InspectionList: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                  {/* 🔊 ORIGINAL / DENOISED INSPECTION AUDIO */}
+                  {/* 🔊 ORIGINAL INSPECTION AUDIO */}
                   {(() => {
                     const rawOriginalAudio =
                       selectedInspectionIssues?.[0]?.audioUrl ?? null;
@@ -461,9 +524,11 @@ const InspectionList: React.FC = () => {
 
                     return originalAudioLink ? (
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Original Inspection Audio
-                        </p>
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-sm font-medium text-gray-500">
+                            Original Inspection Audio
+                          </p>
+                        </div>
 
                         <audio controls className="w-full h-8">
                           <source src={originalAudioLink} />
@@ -477,19 +542,40 @@ const InspectionList: React.FC = () => {
                     );
                   })()}
 
-                  {/* 🎙 ISSUE / VOICE CLIP AUDIO */}
+                  {/* 🎙 DENOISED / ISSUE VOICE CLIP */}
                   {(() => {
                     const rawVoiceClip =
                       selectedInspectionIssues?.[0]?.inspectionResolutionComments?.[0]
                         ?.voiceClipUrl ?? null;
 
                     const voiceClipLink = buildFileUrl(rawVoiceClip);
+                    const baseFileName = rawVoiceClip
+                      ? rawVoiceClip.split("_denoised")[0]
+                      : null;
+                    const transcriptFileName = baseFileName ? `${baseFileName}_transcript.txt` : null;
+                    const issueTextFile =
+                      buildFileUrl(
+                        transcriptFileName
+                      );
 
                     return voiceClipLink ? (
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Denoised Inspection Audio
-                        </p>
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-sm font-medium text-gray-500">
+                            Denoised Inspection Audio
+                          </p>
+
+                          {issueTextFile && (
+                            <a
+                              href={issueTextFile}
+                              download
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Download text file"
+                            >
+                              📄
+                            </a>
+                          )}
+                        </div>
 
                         <audio controls className="w-full h-8">
                           <source src={voiceClipLink} />
@@ -506,14 +592,11 @@ const InspectionList: React.FC = () => {
                 </div>
               </div>
             </div>
-
-
             {/* Filters */}
             {selectedInspectionIssues.length > 0 && (
               <div className="bg-white shadow rounded-lg mb-6">
                 <div className="px-4 py-5 sm:p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4">
                     {/* Status Filter */}
                     <div className="flex items-center space-x-2">
@@ -587,7 +670,6 @@ const InspectionList: React.FC = () => {
             <div className="bg-white shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Inspection Issues</h3>
-
                 {filteredIssues.length > 0 ? (
                   <div className="space-y-4">
                     {filteredIssues.map((issue) => (
@@ -603,12 +685,9 @@ const InspectionList: React.FC = () => {
                               type="checkbox"
                               checked={isIssueResolved(issue.status) || selectedIssues.has(issue.issueId)}
                               onChange={() => handleCheckboxChange(issue.issueId)}
-                              disabled={isIssueResolved(issue.status)}
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${isIssueResolved(issue.status) ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                           </div>
-
                           <div className="flex items-center space-x-2">
                             {/* Delete Icon */}
                             <button
@@ -620,7 +699,7 @@ const InspectionList: React.FC = () => {
                               <FiTrash2 size={18} />
                             </button>
 
-                            {!isIssueResolved(issue.status) ? (
+                            {/* {!isIssueResolved(issue.status) ? (
 
                               <Button
                                 onClick={() => handleUpdateIssueStatus(issue.issueId)}
@@ -650,7 +729,39 @@ const InspectionList: React.FC = () => {
                               <span className="text-sm text-green-600 font-medium">
                                 ✓ Resolved
                               </span>
-                            )}
+                            )} */}
+                            <Button
+                              onClick={() =>
+                                isIssueResolved(issue.status)
+                                  ? handleAddFollowup(issue.issueId)
+                                  : handleUpdateIssueStatus(issue.issueId)
+                              }
+                              disabled={!issueComments[issue.issueId]?.trim() || updatingIssues.has(issue.issueId)}
+                              variant={updateSuccess[issue.issueId] ? "secondary" : "primary"}
+                              size="small"
+                              className={`min-w-[80px] ${updateSuccess[issue.issueId]
+                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
+                                : ''
+                                }`}
+                            >
+                              {updatingIssues.has(issue.issueId) ? (
+                                <div className="flex items-center space-x-1">
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                  <span>...</span>
+                                </div>
+                              ) : updateSuccess[issue.issueId] ? (
+                                <div className="flex items-center space-x-1">
+                                  <span>✓</span>
+                                  <span>Updated</span>
+                                </div>
+                              ) : isIssueResolved(issue.status) ? (
+                                "Update Comment"
+                              ) : (
+                                "Add Comment"
+                              )}
+                            </Button>
+
+
                           </div>
                         </div>
 
@@ -731,45 +842,48 @@ const InspectionList: React.FC = () => {
                         {/* Comments Section */}
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2">Comments:</h4>
-                          {isIssueResolved(issue.status) ? (
-                            <div className="w-full p-3 text-sm border border-gray-300 rounded-md bg-gray-50">
-                              {issue.inspectionResolutionComments && issue.inspectionResolutionComments.length > 0 ? (
+
+                          {/* Show previous resolution comments if resolved */}
+                          {isIssueResolved(issue.status) && (
+                            <div className="w-full p-3 text-sm border border-gray-300 rounded-md bg-gray-50 mb-3">
+                              {issue.inspectionResolutionComments &&
+                                issue.inspectionResolutionComments.length > 0 ? (
                                 <div>
                                   {issue.inspectionResolutionComments
-                                    .filter((comment) => comment.type === "RESOLUTION_COMMENT")
+                                    .filter((c) => c.type === "RESOLUTION_COMMENT")
                                     .map((comment, index) => (
                                       <div key={index} className="mb-2 last:mb-0">
-                                        <div className="text-gray-700 mb-1">{comment.comment}</div>
+                                        <div className="text-gray-700 mb-1">
+                                          {comment.comment}
+                                        </div>
                                         {comment.voiceClipUrl && (
-                                          <div className="mt-2">
-                                            <audio controls className="w-full h-8">
-                                              <source src={comment.voiceClipUrl} type="audio/mpeg" />
-                                              <source src={comment.voiceClipUrl} type="audio/wav" />
-                                              <source src={comment.voiceClipUrl} type="audio/ogg" />
-                                              Your browser does not support the audio element.
-                                            </audio>
-                                          </div>
+                                          <audio controls className="w-full h-8 mt-2">
+                                            <source src={comment.voiceClipUrl} type="audio/mpeg" />
+                                          </audio>
                                         )}
                                       </div>
                                     ))}
-                                  {issue.inspectionResolutionComments.filter((comment) => comment.type === "RESOLUTION_COMMENT").length === 0 && (
-                                    <div className="text-gray-500 italic">No resolution comments available</div>
-                                  )}
                                 </div>
                               ) : (
                                 <div className="text-gray-500 italic">Issue resolved</div>
                               )}
                             </div>
-                          ) : (
-                            <textarea
-                              value={issueComments[issue.issueId] || ''}
-                              onChange={(e) => handleCommentChange(issue.issueId, e.target.value)}
-                              placeholder="Add comments..."
-                              className="w-full p-3 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                              rows={3}
-                            />
                           )}
+
+                          {/* ALWAYS show textarea (even if resolved) */}
+                          <textarea
+                            value={issueComments[issue.issueId] || ''}
+                            onChange={(e) => handleCommentChange(issue.issueId, e.target.value)}
+                            placeholder={
+                              isIssueResolved(issue.status)
+                                ? "Add follow-up comment..."
+                                : "Add comments..."
+                            }
+                            className="w-full p-3 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            rows={3}
+                          />
                         </div>
+
                       </div>
                     ))}
                   </div>

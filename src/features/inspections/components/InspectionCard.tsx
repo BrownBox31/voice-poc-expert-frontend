@@ -52,6 +52,12 @@ const InspectionCard: React.FC<InspectionCardProps> = ({
             {inspection.closedIssuesCount}
           </span>
         </div>
+                <div className="flex justify-between items-center">
+          <span className="text-sm font-medium text-gray-500">View:</span>
+          <span className="text-sm font-semibold text-gray-900">
+            {inspection.checklistView ?? 'N/A'}
+          </span>
+        </div>
       </div>
 
       {/* Progress Bar */}

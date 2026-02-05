@@ -16,6 +16,7 @@ export interface InspectionIssue {
   createdAt: string;
   inspectionId: number;
   audioUrl?: string | null;
+  checklistView?: string | null;
   view?: string | null;
   inspectionResolutionComments?: InspectionResolutionComment[];
   createdByUser: {
@@ -39,6 +40,7 @@ export interface InspectionSummary {
   createdAt: string;
   lastUpdated: string;
   status: string;
+  checklistView?: string | null;
 }
 
 export interface StatusCounts {
@@ -109,15 +111,20 @@ export const groupIssuesByInspection = (issues: InspectionIssue[]): Record<strin
 };
 
 export const createInspectionSummaries = (inspectionGroups: Record<string, InspectionIssue[]>, vinNumber: string): InspectionSummary[] => {
-  const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(([inspectionId, issues]) => {
+const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(
+  ([inspectionId, issues]) => {
     const openIssues = issues.filter(issue => !isIssueResolved(issue.status));
     const closedIssues = issues.filter(issue => isIssueResolved(issue.status));
-    
+
     // Sort issues by creation date to get the earliest and latest
-    const sortedIssues = [...issues].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const sortedIssues = [...issues].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
     const earliestIssue = sortedIssues[0];
     const latestIssue = sortedIssues[sortedIssues.length - 1];
-    
+
     // Determine overall inspection status
     let status = 'completed';
     if (openIssues.length > 0) {
@@ -132,9 +139,12 @@ export const createInspectionSummaries = (inspectionGroups: Record<string, Inspe
       closedIssuesCount: closedIssues.length,
       createdAt: earliestIssue.createdAt,
       lastUpdated: latestIssue.createdAt,
+      checklistView: earliestIssue.checklistView, // ✅ ADDED
       status
     };
-  });
+  }
+);
+
 
   // Sort inspections by creation date (newest first)
   return inspectionSummaries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -317,6 +327,25 @@ export const deleteIssueResolution = async (issueId: number): Promise<void> => {
     await apiService.delete(url);
   } catch (error) {
     throw new Error(`Failed to delete issue: ${error}`);
+  }
+};
+
+export const addFollowupComment = async (
+  inspectionIssueId: number,
+  comment: string
+): Promise<void> => {
+  try {
+    if (!comment?.trim()) {
+      throw new Error("Follow-up comment cannot be empty");
+    }
+
+    const url = `/resolution/issue/${inspectionIssueId}/comment`;
+
+    await apiService.patch(url, {
+      comment: comment.trim(),
+    });
+  } catch (error) {
+    throw new Error(`Failed to add follow-up comment: ${error}`);
   }
 };
 
