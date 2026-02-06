@@ -16,7 +16,9 @@ import {
   type InspectionSummary,
   type InspectionIssue,
   deleteIssueResolution,
-  addFollowupComment
+  addFollowupComment,
+  fetchReworkStations,
+  updateIssueReworkStation
 } from '../features/inspections/services/inspection_services';
 import Loader from '../components/loader';
 import { FiTrash2, FiEdit } from "react-icons/fi";
@@ -47,7 +49,11 @@ const InspectionList: React.FC = () => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
   const [, setNewIssueActionType] = useState('');
   const [creatingIssue, setCreatingIssue] = useState(false);
-
+  const [stations, setStations] = useState<
+    { id: number; reworkStationName: string }[]
+  >([]);
+  const [editingStationForIssue, setEditingStationForIssue] =
+    useState<number | null>(null);
 
 
   useEffect(() => {
@@ -55,6 +61,12 @@ const InspectionList: React.FC = () => {
       handleFetchInspections(vin);
     }
   }, [vin]);
+
+  useEffect(() => {
+    fetchReworkStations()
+      .then(setStations)
+      .catch(console.error);
+  }, []);
 
   const handleFetchInspections = async (vinNumber: string) => {
     try {
@@ -204,7 +216,7 @@ const InspectionList: React.FC = () => {
 
     } catch (err) {
       console.error("Failed to update:", err);
-      alert("Failed to add follow-up. Please try again.");
+      alert("Failed to update. Please try again.");
     } finally {
       setUpdatingIssues(prev => {
         const newSet = new Set(prev);
@@ -357,6 +369,43 @@ const InspectionList: React.FC = () => {
     }
   };
 
+  const handleStationChange = async (issueId: number, newId: number) => {
+    try {
+      const updated = await updateIssueReworkStation(issueId, newId);
+
+      if (updated.reworkstation) {
+        setIssuesData(prev =>
+          prev?.map(it =>
+            it.issueId === issueId
+              ? {
+                ...it,
+                reworkStationId: updated.reworkstation!.id,
+                reworkStationName: updated.reworkstation!.reworkStationName,
+              }
+              : it
+          ) ?? null
+        );
+
+        // ✅ CLOSE DROPDOWN AFTER UPDATE
+        setEditingStationForIssue(null);
+
+        // ✅ SHOW CONFIRMATION
+        swal({
+          title: "Updated!",
+          text: "Rework station updated successfully",
+          icon: "success",
+          timer: 1500,
+          //  buttons: false,
+        });
+      }
+    } catch (err) {
+      swal({
+        title: "Error",
+        text: "Failed to update rework station",
+        icon: "error",
+      });
+    }
+  };
 
 
 
@@ -817,27 +866,78 @@ const InspectionList: React.FC = () => {
 
 
                         {/* Meta Information */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-6 mb-3 text-sm">
+
+                          <div className="min-w-[250px]">
+                            <span className="font-medium text-gray-700">Rework Station:</span>
+
+                            {editingStationForIssue === issue.issueId ? (
+                              // ---------- EDIT MODE: SHOW DROPDOWN ----------
+                              <select
+                                className="border rounded p-1 text-sm mt-1 w-full"
+                                value={issue.reworkStationId || ""}
+                                onChange={(e) =>
+                                  handleStationChange(issue.issueId, Number(e.target.value))
+                                }
+                                onBlur={() => setEditingStationForIssue(null)} // click outside closes it
+                              >
+                                <option value="" disabled>
+                                  Select Station
+                                </option>
+
+                                {stations.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.reworkStationName}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              // ---------- VIEW MODE: SHOW TEXT + EDIT ICON ----------
+                              <div className="flex items-center gap-2 text-gray-600 mt-1">
+                                <span>{issue.reworkStationName || "Not assigned"}</span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingStationForIssue(issue.issueId)}
+                                  className="text-gray-400 hover:text-blue-600 transition"
+                                  title="Edit Rework Station"
+                                >
+                                  <FiEdit size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+
+                          {/* Created By */}
                           <div>
                             <span className="font-medium text-gray-700">Created by:</span>
                             <div className="text-gray-600">
                               {issue.createdByUser.firstName} {issue.createdByUser.lastName}
-                              <span className="text-xs text-gray-400 ml-1">(ID: {issue.createdByUser.id})</span>
+                              <span className="text-xs text-gray-400 ml-1">
+                                (ID: {issue.createdByUser.id})
+                              </span>
                             </div>
                           </div>
+
+                          {/* Created At */}
                           <div>
                             <span className="font-medium text-gray-700">Created at:</span>
                             <div className="text-gray-600">
-                              {issue.createdAt ? new Date(issue.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'N/A'}
+                              {issue.createdAt
+                                ? new Date(issue.createdAt).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                                : "N/A"}
                             </div>
                           </div>
+
                         </div>
+
 
                         {/* Comments Section */}
                         <div>

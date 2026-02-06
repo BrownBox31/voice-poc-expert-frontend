@@ -16,8 +16,13 @@ export interface InspectionIssue {
   createdAt: string;
   inspectionId: number;
   audioUrl?: string | null;
-  checklistView?: string | null;
   view?: string | null;
+  checklistView: string | null;
+  reworkStationId: number | null;
+  reworkStationName: string | null;
+  defectId: number | null;
+  defectName: string | null;
+  confidenceScore: number | null;
   inspectionResolutionComments?: InspectionResolutionComment[];
   createdByUser: {
     id: number;
@@ -59,7 +64,7 @@ export const isIssueResolved = (status: string): boolean => {
 
 export const getStatusBadge = (status: string): string => {
   const baseClasses = "px-3 py-1 text-sm font-medium rounded-full";
-  
+
   switch (status.toLowerCase()) {
     case 'completed':
       return `${baseClasses} bg-green-100 text-green-800`;
@@ -75,7 +80,7 @@ export const getStatusBadge = (status: string): string => {
 // Data processing functions
 export const processApiResponse = (response: unknown): InspectionIssuesResponse | null => {
   let issuesData: InspectionIssuesResponse | null = null;
-  
+
   if (response && typeof response === 'object') {
     if ('data' in response && response.data) {
       issuesData = response.data as InspectionIssuesResponse;
@@ -94,7 +99,7 @@ export const processApiResponse = (response: unknown): InspectionIssuesResponse 
       }
     }
   }
-  
+
   return issuesData;
 };
 
@@ -111,39 +116,39 @@ export const groupIssuesByInspection = (issues: InspectionIssue[]): Record<strin
 };
 
 export const createInspectionSummaries = (inspectionGroups: Record<string, InspectionIssue[]>, vinNumber: string): InspectionSummary[] => {
-const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(
-  ([inspectionId, issues]) => {
-    const openIssues = issues.filter(issue => !isIssueResolved(issue.status));
-    const closedIssues = issues.filter(issue => isIssueResolved(issue.status));
+  const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups).map(
+    ([inspectionId, issues]) => {
+      const openIssues = issues.filter(issue => !isIssueResolved(issue.status));
+      const closedIssues = issues.filter(issue => isIssueResolved(issue.status));
 
-    // Sort issues by creation date to get the earliest and latest
-    const sortedIssues = [...issues].sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+      // Sort issues by creation date to get the earliest and latest
+      const sortedIssues = [...issues].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
 
-    const earliestIssue = sortedIssues[0];
-    const latestIssue = sortedIssues[sortedIssues.length - 1];
+      const earliestIssue = sortedIssues[0];
+      const latestIssue = sortedIssues[sortedIssues.length - 1];
 
-    // Determine overall inspection status
-    let status = 'completed';
-    if (openIssues.length > 0) {
-      status = openIssues.length === issues.length ? 'pending' : 'in_progress';
+      // Determine overall inspection status
+      let status = 'completed';
+      if (openIssues.length > 0) {
+        status = openIssues.length === issues.length ? 'pending' : 'in_progress';
+      }
+
+      return {
+        inspectionId,
+        vin: vinNumber,
+        issueCount: issues.length,
+        openIssuesCount: openIssues.length,
+        closedIssuesCount: closedIssues.length,
+        createdAt: earliestIssue.createdAt,
+        lastUpdated: latestIssue.createdAt,
+        checklistView: earliestIssue.checklistView, // ✅ ADDED
+        status
+      };
     }
-
-    return {
-      inspectionId,
-      vin: vinNumber,
-      issueCount: issues.length,
-      openIssuesCount: openIssues.length,
-      closedIssuesCount: closedIssues.length,
-      createdAt: earliestIssue.createdAt,
-      lastUpdated: latestIssue.createdAt,
-      checklistView: earliestIssue.checklistView, // ✅ ADDED
-      status
-    };
-  }
-);
+  );
 
 
   // Sort inspections by creation date (newest first)
@@ -152,49 +157,49 @@ const inspectionSummaries: InspectionSummary[] = Object.entries(inspectionGroups
 
 export const filterInspections = (inspections: InspectionSummary[], searchTerm: string): InspectionSummary[] => {
   if (!searchTerm.trim()) return inspections;
-  
+
   const searchLower = searchTerm.toLowerCase();
-  return inspections.filter(inspection => 
+  return inspections.filter(inspection =>
     inspection.inspectionId.toLowerCase().includes(searchLower)
   );
 };
 
 export const getSelectedInspectionIssues = (
-  issuesData: InspectionIssue[] | null, 
+  issuesData: InspectionIssue[] | null,
   selectedInspectionId: string | null
 ): InspectionIssue[] => {
   if (!selectedInspectionId || !issuesData) return [];
-  
-  return issuesData.filter(issue => 
+
+  return issuesData.filter(issue =>
     String(issue.inspectionId) === selectedInspectionId
   );
 };
 
 export const filterIssues = (
-  issues: InspectionIssue[], 
-  statusFilter: 'all' | 'open' | 'closed', 
+  issues: InspectionIssue[],
+  statusFilter: 'all' | 'open' | 'closed',
   searchTerm: string
 ): InspectionIssue[] => {
   if (!issues.length) return [];
-  
+
   let filtered = issues;
-  
+
   // Filter by status
   if (statusFilter === 'open') {
     filtered = filtered.filter(issue => !isIssueResolved(issue.status));
   } else if (statusFilter === 'closed') {
     filtered = filtered.filter(issue => isIssueResolved(issue.status));
   }
-  
+
   // Filter by search term
   if (searchTerm.trim()) {
     const searchLower = searchTerm.toLowerCase();
-    filtered = filtered.filter(issue => 
+    filtered = filtered.filter(issue =>
       issue.issueDescription.toLowerCase().includes(searchLower) ||
       issue.issueId.toString().includes(searchLower)
     );
   }
-  
+
   return filtered;
 };
 
@@ -202,11 +207,11 @@ export const getStatusCounts = (issues: InspectionIssue[]): StatusCounts => {
   if (!issues.length) {
     return { total: 0, open: 0, closed: 0 };
   }
-  
+
   const total = issues.length;
   const closed = issues.filter(issue => isIssueResolved(issue.status)).length;
   const open = total - closed;
-  
+
   return { total, open, closed };
 };
 
@@ -219,21 +224,21 @@ export const fetchInspectionsByVin = async (vinNumber: string): Promise<{
     // Use the inspection details endpoint to get all issues for this VIN
     const url = `${ApiEndpoints.INSPECTION_DETAILS}${vinNumber}`;
     const response = await apiService.get<InspectionIssuesResponse>(url);
-console.log("API response for inspections by VIN:", response);
+
     // Process the API response
     const inspectionData = processApiResponse(response);
-    
+
     if (Array.isArray(inspectionData)) {
       // Find the data for the specific VIN
       const vinData = inspectionData.find(data => data.vin === vinNumber);
-      
+
       if (vinData && vinData.issues) {
         // Group issues by inspection
         const inspectionGroups = groupIssuesByInspection(vinData.issues);
-        
+
         // Create inspection summaries
         const inspections = createInspectionSummaries(inspectionGroups, vinNumber);
-        
+
         return { inspections, issuesData: vinData.issues };
       } else {
         return { inspections: [], issuesData: [] };
@@ -301,20 +306,20 @@ export const createIssueResolution = async (
   inspectionId: number,
   vin: string | undefined,
   issueDescription: string,
- // actionType?: string
+  // actionType?: string
 ): Promise<void> => {
   try {
     const payload = {
       inspectionId,
       vin,
       issueDescription: issueDescription.trim(),
-    //  action_type: actionType ?? '',
+      //  action_type: actionType ?? '',
 
       //  Optional fields – enable when needed
       // attachment_urls: [],       // string[]
       // voice_clip_url: '',        // string
     };
-console.log("payload", payload);
+    console.log("payload", payload);
     await apiService.post('/resolution/create/issue', payload);
   } catch (error) {
     throw new Error(`Failed to create issue resolution: ${error}`);
@@ -348,6 +353,61 @@ export const addFollowupComment = async (
     throw new Error(`Failed to add follow-up comment: ${error}`);
   }
 };
+
+// ---------- NEW: GET REWORK STATIONS ----------
+export type ReworkStation = {
+  id: number;
+  reworkStationName: string;
+};
+
+export const fetchReworkStations = async (): Promise<ReworkStation[]> => {
+  try {
+    const url = `${ApiEndpoints.REWORK_STATIONS}`;
+
+    const response = await apiService.get(url);
+
+    // Handle all possible response shapes from your backend
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (response?.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    // Fallback safety
+    return [];
+  } catch (error) {
+    console.error("Error fetching rework stations:", error);
+    return []; // never return {}
+  }
+};
+
+export const updateIssueReworkStation = async (
+  issueId: number,
+  reworkStationId: number
+): Promise<{
+  reworkstation?: { id: number; reworkStationName: string } | null;
+}> => {
+  try {
+  const url = `${ApiEndpoints.UPDATE_ISSUE_REWORK_STATION}${issueId}/rework-station`;
+
+    const res = await apiService.patch(url, { reworkStationId });
+
+    const data = res?.data ?? res;
+
+    // normalize response so TS never complains
+    if (!data ) {
+      return { reworkstation: null };
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Failed to update rework station:", error);
+    return { reworkstation: null };
+  }
+};
+
 
 
 
