@@ -944,7 +944,7 @@ const InspectionList: React.FC = () => {
                           <h4 className="text-sm font-medium text-gray-700 mb-2">Comments:</h4>
 
                           {/* Show previous resolution comments if resolved */}
-                          {isIssueResolved(issue.status) && (
+                  {isIssueResolved(issue.status) && (
                             <div className="w-full p-3 text-sm border border-gray-300 rounded-md bg-gray-50 mb-3">
                               {issue.inspectionResolutionComments &&
                                 issue.inspectionResolutionComments.length > 0 ? (
@@ -956,11 +956,11 @@ const InspectionList: React.FC = () => {
                                         <div className="text-gray-700 mb-1">
                                           {comment.comment}
                                         </div>
-                                        {comment.voiceClipUrl && (
+                                        {/* {comment.voiceClipUrl && (
                                           <audio controls className="w-full h-8 mt-2">
                                             <source src={comment.voiceClipUrl} type="audio/mpeg" />
                                           </audio>
-                                        )}
+                                        )} */}
                                       </div>
                                     ))}
                                 </div>
@@ -968,7 +968,7 @@ const InspectionList: React.FC = () => {
                                 <div className="text-gray-500 italic">Issue resolved</div>
                               )}
                             </div>
-                          )}
+                          )} 
 
                           {/* ALWAYS show textarea (even if resolved) */}
                           <textarea
